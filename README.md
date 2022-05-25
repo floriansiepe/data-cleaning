@@ -1,5 +1,16 @@
 # data-cleaning Project
 
+## Preparations
+
+### Getting Google's Word2Vec model
+
+```shell script
+wget -P data https://dl4jdata.blob.core.windows.net/resources/wordvectors/GoogleNews-vectors-negative300.bin.gz
+```
+
+If you are not using Linux x86 you need to adapt the `cpu.arch` property in the [pom.xml](pom.xml) according to your
+machine.
+
 This project uses Quarkus, the Supersonic Subatomic Java Framework.
 
 If you want to learn more about Quarkus, please visit its website: https://quarkus.io/ .
@@ -7,8 +18,9 @@ If you want to learn more about Quarkus, please visit its website: https://quark
 ## Running the application in dev mode
 
 You can run your application in dev mode that enables live coding using:
+
 ```shell script
-./mvnw compile quarkus:dev
+./mvnw compile quarkus:dev -Xms1024m -Xmx10g -XX:MaxPermSize=2g
 ```
 
 > **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at http://localhost:8080/q/dev/.
