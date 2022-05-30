@@ -4,14 +4,14 @@ import de.uni_mannheim.informatik.dws.winter.matching.rules.comparators.Comparat
 import de.uni_mannheim.informatik.dws.winter.matching.rules.comparators.ComparatorLogger;
 import de.uni_mannheim.informatik.dws.winter.model.Correspondence;
 import de.uni_mannheim.informatik.dws.winter.model.Matchable;
+import de.uni_mannheim.informatik.dws.winter.similarity.SimilarityMeasure;
 import florian.siepe.entity.kb.MatchableTableColumn;
-import florian.siepe.measures.Word2VecSimilarity;
 
-public class Word2VecComparator implements Comparator<MatchableTableColumn, MatchableTableColumn> {
-    private final Word2VecSimilarity similarity;
+public class TableColumnComparator implements Comparator<MatchableTableColumn, MatchableTableColumn> {
+    private final SimilarityMeasure<String> similarity;
     private ComparatorLogger comparisonLog;
 
-    public Word2VecComparator(final Word2VecSimilarity similarity) {
+    public TableColumnComparator(final SimilarityMeasure<String> similarity) {
         this.similarity = similarity;
     }
 
