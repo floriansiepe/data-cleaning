@@ -14,6 +14,7 @@ public class MatchableLodColumn extends MatchableTableColumn implements Serializ
 
     public static final int CSV_LENGTH = 2;
     private static final long serialVersionUID = 1L;
+    private int globalId;
 
     public MatchableLodColumn() {
 
@@ -21,8 +22,7 @@ public class MatchableLodColumn extends MatchableTableColumn implements Serializ
 
     public MatchableLodColumn(int tableId, TableColumn c, int globalId) {
         super(tableId, c);
-
-        this.columnIndex = globalId;
+        this.globalId = globalId;
         this.id = c.getIdentifier();
     }
 

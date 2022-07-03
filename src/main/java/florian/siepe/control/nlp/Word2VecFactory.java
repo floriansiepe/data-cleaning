@@ -1,5 +1,6 @@
 package florian.siepe.control.nlp;
 
+import de.uni_mannheim.informatik.dws.winter.similarity.SimilarityMeasure;
 import org.deeplearning4j.models.embeddings.loader.WordVectorSerializer;
 import org.deeplearning4j.models.word2vec.Word2Vec;
 import org.slf4j.Logger;
@@ -10,7 +11,7 @@ import java.util.Collection;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
-public class Word2VecFactory implements Closeable {
+public class Word2VecFactory extends SimilarityMeasure<String> implements Closeable {
     public static final String WORD_2_VEC_MODEL = "data/GoogleNews-vectors-negative300.bin";
     private static final Logger logger = getLogger(Word2VecFactory.class);
     private static Word2VecFactory service;
@@ -39,7 +40,8 @@ public class Word2VecFactory implements Closeable {
         }
     }
 
-    public double similarity(String first, String second) {
+    @Override
+    public double calculate(String first, String second) {
         if (word2Vec == null) {
             readModel();
         }

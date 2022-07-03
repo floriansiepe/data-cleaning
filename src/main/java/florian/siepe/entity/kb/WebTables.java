@@ -286,4 +286,8 @@ public class WebTables implements Serializable {
             System.out.println(String.format("\t[%d] %s (%s) %s", tc.getColumnIndex(), tc.getHeader(), tc.getDataType(), tc.getColumnIndex() == t.getSubjectColumnIndex() ? " *entity label column*" : ""));
         }
     }
+
+    public MatchableTableColumn findColumn(final int tableId, final int columnIndex2) {
+        return schema.where(input -> input.getTableId() == tableId && input.getColumnIndex() == columnIndex2).firstOrNull();
+    }
 }

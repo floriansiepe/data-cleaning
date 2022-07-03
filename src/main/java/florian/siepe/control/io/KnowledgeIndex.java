@@ -159,7 +159,27 @@ public class KnowledgeIndex implements Serializable {
         return schema;
     }
 
+    public BiMap<String, Integer> getClassIds() {
+        return classIds;
+    }
+
+    public LinkedList<String> getProperties() {
+        return properties;
+    }
+
+    public BiMap<Integer, BiMap<Integer, Integer>> getPropertyIndices() {
+        return propertyIndices;
+    }
+
+    public Map<Integer, Map<Integer, Double>> getClassSimilarities() {
+        return classSimilarities;
+    }
+
     public DataSet<MatchableTable, MatchableTableColumn> getTables() {
         return tables;
+    }
+
+    public MatchableTableColumn findColumn(final int tableId, final int columnIndex1) {
+        return schema.where(input -> input.getColumnIndex() == columnIndex1 && input.getTableId() == tableId).firstOrNull();
     }
 }

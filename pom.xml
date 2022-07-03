@@ -11,7 +11,7 @@
     <dl4j.version>1.0.0-M2</dl4j.version>
     <failsafe.useModulePath>false</failsafe.useModulePath>
     <maven-shade-plugin.version>2.4.3</maven-shade-plugin.version>
-    <maven.compiler.release>17</maven.compiler.release>
+    <maven.compiler.release>11</maven.compiler.release>
     <nd4j.version>1.0.0-M2</nd4j.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -130,6 +130,11 @@
       <groupId>io.rest-assured</groupId>
       <artifactId>rest-assured</artifactId>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>info.debatty</groupId>
+      <artifactId>java-lsh</artifactId>
+      <version>0.12</version>
     </dependency>
   </dependencies>
   <build>

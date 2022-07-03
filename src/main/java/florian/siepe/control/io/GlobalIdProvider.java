@@ -1,11 +1,11 @@
 package florian.siepe.control.io;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import java.io.Serializable;
 
-public class GlobalIdProvider {
-    private final AtomicInteger ids = new AtomicInteger();
+public class GlobalIdProvider implements Serializable {
+    private int ids = 0;
 
-    public int get() {
-        return ids.getAndIncrement();
+    public synchronized int get() {
+        return ids++;
     }
 }

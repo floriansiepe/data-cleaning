@@ -112,7 +112,7 @@ public class KnowledgeBase implements Serializable {
         Uni.join().all(unis).usingConcurrencyOf(4).andCollectFailures().await().indefinitely();
 
         addMissingClasses(tableId);
-        computeClassSimilarities();
+        //computeClassSimilarities();
 
         LodCsvTableParser.endLoadData();
 
@@ -157,7 +157,7 @@ public class KnowledgeBase implements Serializable {
                 var frist = normalizeClassName(clazz);
                 var second = normalizeClassName(innerClass);
 
-                final var similarity = word2Vec.similarity(frist, second);
+                final var similarity = word2Vec.calculate(frist, second);
                 knowledgeIndex.addClassSimilarity(clazz, innerClass, similarity);
             }
         }
@@ -179,11 +179,9 @@ public class KnowledgeBase implements Serializable {
         BiMap<Integer, Integer> indexTranslation = HashBiMap.create();
         for (TableColumn tc : table.getSchema().getRecords()) {
             if (!knowledgeIndex.hasProperty(tc.getUri())) {
-                // Create a new property and add it to the index
                 int globalId = globalIdProvider.get();
                 knowledgeIndex.addProperty(tc.getUri(), globalId);
-                //here for each column (property) table Id will be '0' because there is no particular column (property) that belongs to one particular Dbpedia class.
-                MatchableLodColumn mc = new MatchableLodColumn(0, tc, globalId);
+                MatchableLodColumn mc = new MatchableLodColumn(table.getTableId(), tc, globalId);
                 knowledgeIndex.addSchema(mc);
 
                 indexTranslation.put(globalId, colIdx);
@@ -202,6 +200,9 @@ public class KnowledgeBase implements Serializable {
 
         //###
         int tblIdx = table.getTableId();
+        if (tblIdx == 0) {
+            System.out.println(table.getPath());
+        }
         knowledgeIndex.addPropertyIndex(tblIdx, indexTranslation);
 
         for (TableRow r : table.getRows()) {

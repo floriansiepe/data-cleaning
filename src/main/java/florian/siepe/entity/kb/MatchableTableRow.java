@@ -225,4 +225,29 @@ public class MatchableTableRow implements Matchable, Fusible<MatchableTableColum
 		s = s.replace("\n", " ");
 		return String.format("%1$-" + n + "s", s);
 	}
+
+	@Override
+	public String toString() {
+		return String.format("Id: %s, Table Id: %d, Row Id: %d", id, tableId, rowNumber);
+	}
+
+	@Override
+	public boolean equals(final Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		final MatchableTableRow that = (MatchableTableRow) o;
+
+		if (rowNumber != that.rowNumber) return false;
+		if (tableId != that.tableId) return false;
+		return id != null ? id.equals(that.id) : that.id == null;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = id != null ? id.hashCode() : 0;
+		result = 31 * result + rowNumber;
+		result = 31 * result + tableId;
+		return result;
+	}
 }
