@@ -55,7 +55,7 @@ public class WebTables implements Serializable {
     // lookup for key column
     private final HashMap<Integer, Integer> keyIndices = new HashMap<>();
     // lookup for tables by id
-    private HashMap<Integer, Table> tablesById = null;
+    private HashMap<Integer, Table> tablesById = new HashMap<>();
     // detect entity label columns, even if they are set in the file
     private boolean forceDetectKeys = false;
     private boolean convertValues = true;

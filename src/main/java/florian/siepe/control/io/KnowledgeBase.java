@@ -109,7 +109,7 @@ public class KnowledgeBase implements Serializable {
             unis.add(uni);
         }
 
-        Uni.join().all(unis).usingConcurrencyOf(4).andCollectFailures().await().indefinitely();
+        Uni.join().all(unis).usingConcurrencyOf(1).andCollectFailures().await().indefinitely();
 
         addMissingClasses(tableId);
         //computeClassSimilarities();
