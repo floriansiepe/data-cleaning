@@ -37,6 +37,12 @@ public class KnowledgeIndex implements Serializable {
 
     private final Map<Integer, Map<Integer, Double>> classSimilarities = new HashMap<>();
 
+    // rdfs:label
+    private MatchableLodColumn rdfsLabel;
+    private HashMap<Integer, Double> classWeight = new HashMap<Integer, Double>();
+    // lookup for tables by id
+    private HashMap<Integer, Integer> sizePerTable = new HashMap<Integer, Integer>();
+
     public static HashMap<String, String> getClassHierarchy() {
         return classHierarchy;
     }
@@ -181,5 +187,25 @@ public class KnowledgeIndex implements Serializable {
 
     public MatchableTableColumn findColumn(final int tableId, final int columnIndex1) {
         return schema.where(input -> input.getColumnIndex() == columnIndex1 && input.getTableId() == tableId).firstOrNull();
+    }
+
+    public MatchableLodColumn getRdfsLabel() {
+        return rdfsLabel;
+    }
+
+    public void setRdfsLabel(final MatchableLodColumn rdfsLabel) {
+        this.rdfsLabel = rdfsLabel;
+    }
+
+    public HashMap<Integer, Double> getClassWeight() {
+        return classWeight;
+    }
+
+    public void setClassWeight(final HashMap<Integer, Double> classWeight) {
+        this.classWeight = classWeight;
+    }
+
+    public HashMap<Integer, Integer> getSizePerTable() {
+        return sizePerTable;
     }
 }

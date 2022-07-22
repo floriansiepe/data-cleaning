@@ -1,12 +1,20 @@
 package florian.siepe;
 
+import de.uni_mannheim.informatik.dws.winter.index.IIndex;
+import de.uni_mannheim.informatik.dws.winter.index.io.DefaultIndex;
+import de.uni_mannheim.informatik.dws.winter.index.io.InMemoryIndex;
+import de.uni_mannheim.informatik.dws.winter.matching.MatchingEngine;
 import de.uni_mannheim.informatik.dws.winter.model.Correspondence;
+import de.uni_mannheim.informatik.dws.winter.processing.Processable;
 import florian.siepe.control.graph.GraphFactory;
 import florian.siepe.control.io.KnowledgeBase;
 import florian.siepe.entity.kb.MatchableTableColumn;
+import florian.siepe.entity.kb.MatchableTableRow;
 import florian.siepe.entity.kb.WebTables;
 import florian.siepe.evaluation.Evaluation;
+import florian.siepe.matcher.InstanceMatcher;
 import florian.siepe.matcher.PropertyMatcher;
+import florian.siepe.t2k.*;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import picocli.CommandLine.Command;
@@ -31,29 +39,76 @@ public class CleaningCommand implements Runnable {
     @Option(names = {"-t", "--tables"}, description = "Tables to clean", paramLabel = "TABLES", required = true)
     List<File> tables;
 
-    @Option(names = {"-g --gold-standard"}, defaultValue = "data/gs_class.csv")
+    @Option(names = {"-g, --gold-standard"}, defaultValue = "data/gs_class.csv")
     File goldStandard;
+
+    @Option(names = {"-sf", "--surface-forms"}, defaultValue = "data/surfaceforms.txt")
+    File surfaceForms;
+
+    @Option(names = {"-il", "--index-location"}, defaultValue = "data/index/")
+    String indexLocation;
 
     @ConfigProperty(name = "property-matcher.use-word2vec", defaultValue = "false")
     Boolean useWord2Vec;
+
     public CleaningCommand(final GraphFactory graphFactory) {
         this.graphFactory = graphFactory;
     }
 
     @Override
     public void run() {
+        // Initialize
+        final var sf = new SurfaceForms(surfaceForms, null);
+        boolean createIndex = false;
+        IIndex index;
+        // create index for candidate lookup
+        if(indexLocation==null) {
+            // no index provided, create a new one in memory
+            index = new InMemoryIndex();
+            createIndex = true;
+        } else{
+            // load index from location that was provided
+            index = new DefaultIndex(indexLocation);
+            createIndex = !new File(indexLocation).exists();
+        }
+        if(createIndex) {
+            sf.loadIfRequired();
+        }
+
         logger.info("Start building Knowledgebase index");
-        final var kb = KnowledgeBase.getInstance(knowledgeBase);
+        final var kb = KnowledgeBase.getInstance(knowledgeBase, createIndex ? index : null, sf);
+
         logger.info("Build Knowledgebase index");
         logger.info("Loading webtables");
         final var web = WebTables.loadWebTables(tables, true, true, true);
         logger.info("Loaded webtables");
+        logger.info("Instance matching");
+
+        MatchingEngine<MatchableTableRow, MatchableTableColumn> matchingEngine = new MatchingEngine<>();
+
+        // create schema correspondences between the key columns and rdfs:Label
+        Processable<Correspondence<MatchableTableColumn, MatchableTableRow>> keyCorrespondences = web.getKeys().map(new WebTableKeyToRdfsLabelCorrespondenceGenerator(kb.getKnowledgeIndex().getRdfsLabel()));
+
+        // Candidate selection
+        CandidateSelection cs = new CandidateSelection(matchingEngine, index, indexLocation, web, kb, sf, keyCorrespondences);
+        Processable<Correspondence<MatchableTableRow, MatchableTableColumn>> instanceCorrespondences = cs.run();
+
+        // Candidate Decision
+        ClassDecision classDec = new ClassDecision();
+        Map<Integer, Set<String>> classesPerTable = classDec.runClassDecision(kb, instanceCorrespondences, matchingEngine);
+
+        // Candidate refinement
+        CandidateRefinement cr = new CandidateRefinement(matchingEngine,  index, indexLocation, web, kb, sf, keyCorrespondences, classesPerTable);
+        instanceCorrespondences = cr.run();
+        final var instanceMatcher = new InstanceMatcher(kb.getKnowledgeIndex(), web);
+        instanceMatcher.runMatching();
 
         logger.info("Property matching");
-        final var propertyMatcher = new PropertyMatcher(useWord2Vec);
+        var threshold = 0.5;
+        final var propertyMatcher = new PropertyMatcher(useWord2Vec, threshold);
         final var correspondencesMap = propertyMatcher.runMatching(kb.getKnowledgeIndex(), web);
 
-        final var classMapping = new HashMap<Integer, Integer>();
+        final var classMapping = new HashMap<Integer, Set<Integer>>();
         for (final var entry : correspondencesMap.entrySet()) {
             final var classes = new HashSet<Integer>();
             final var matching = new HashMap<MatchableTableColumn, Correspondence<MatchableTableColumn, MatchableTableColumn>>();
@@ -83,10 +138,12 @@ public class CleaningCommand implements Runnable {
                 logger.info("{} <-> {}: {}", cor.getFirstRecord().toString(), cor.getSecondRecord().toString(), cor.getSimilarityScore());
             }
 
-            final var bestClass = matchingQuality.entrySet().stream().max(Map.Entry.comparingByValue()).orElse(null);
+            /*final var bestClass = matchingQuality.entrySet().stream().max(Map.Entry.comparingByValue()).orElse(null);
             if (bestClass != null) {
                 classMapping.put(webTableId, bestClass.getKey());
-            }
+            }*/
+
+            classMapping.put(webTableId, matchingQuality.keySet());
 
 
 
@@ -102,18 +159,14 @@ public class CleaningCommand implements Runnable {
         }
 
         try {
+            logger.info("Class mapping {}", classMapping);
             final var evaluation = new Evaluation(kb.getKnowledgeIndex(), web);
             evaluation.loadGoldStandard(goldStandard);
             evaluation.evaluate(classMapping);
+            logger.warn("Threshold was: {}", threshold);
         } catch (IOException e) {
-
+            e.printStackTrace();
         }
-
-
-        /*logger.info("Instance matching");
-
-        final var instanceMatcher = new InstanceMatcher(correspondencesMap, kb.getKnowledgeIndex(), web);
-        instanceMatcher.runMatching();*/
 
 
     }

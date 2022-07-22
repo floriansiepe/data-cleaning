@@ -78,7 +78,6 @@ public class LocalitySensitiveHashingBlockingKeyGenerator extends BlockingKeyGen
 
             final var universeValue = universe[i].get(universeColIndex);
             final var recordValue = record.get(recordColIndex);
-            logger.debug("Comparing {} with {}", universeValue.toString(), recordValue.toString());
             if (universeValue.equals(recordValue)) {
                 vector[i] = true;
             }

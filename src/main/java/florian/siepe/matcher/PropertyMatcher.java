@@ -17,12 +17,15 @@ import org.slf4j.LoggerFactory;
 
 public class PropertyMatcher extends AbstractMatcher {
     private static final Logger logger = LoggerFactory.getLogger(PropertyMatcher.class);
+    private final double threshold;
     private final Word2VecFactory word2VecFactory;
 
-    public PropertyMatcher(boolean useWord2Vec) {
+    public PropertyMatcher(boolean useWord2Vec, final double threshold) {
         // In dev profile use more lightweight function
         word2VecFactory = useWord2Vec ? Word2VecFactory.getInstance() : null;
+        this.threshold = threshold;
     }
+
 
     @Override
     public Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>> runMatching(final DataSet<MatchableTableColumn, MatchableTableColumn> dataSet, final DataSet<MatchableTableColumn, MatchableTableColumn> dataSet1, final Processable<Correspondence<MatchableTableColumn, Matchable>> processable) {
@@ -30,7 +33,7 @@ public class PropertyMatcher extends AbstractMatcher {
 
         final var jaccardComparator = new TableColumnComparator(new TokenizingJaccardSimilarity());
         //final var matchingRule = new LinearCombinationMatchingRule<MatchableTableColumn, MatchableTableColumn>(0.6);
-        final var matchingRule = new MaxMatchingRule<MatchableTableColumn, MatchableTableColumn>(0.6);
+        final var matchingRule = new MaxMatchingRule<MatchableTableColumn, MatchableTableColumn>(0.5);
 
         if (word2VecFactory != null) {
             final var word2VecComparator = new TableColumnComparator(new Word2VecSimilarity(word2VecFactory.getWord2Vec()));
@@ -39,7 +42,7 @@ public class PropertyMatcher extends AbstractMatcher {
 
         matchingRule.addComparator(jaccardComparator);
         try {
-            return engine.runLabelBasedSchemaMatching(dataSet, dataSet1, matchingRule, 0.5);
+            return engine.runLabelBasedSchemaMatching(dataSet, dataSet1, matchingRule, threshold);
         } catch (Exception e) {
             return new ProcessableCollection<>();
         }

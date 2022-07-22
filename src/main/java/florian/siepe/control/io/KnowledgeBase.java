@@ -6,6 +6,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
+import de.uni_mannheim.informatik.dws.winter.index.IIndex;
 import de.uni_mannheim.informatik.dws.winter.webtables.Table;
 import de.uni_mannheim.informatik.dws.winter.webtables.TableColumn;
 import de.uni_mannheim.informatik.dws.winter.webtables.TableRow;
@@ -17,6 +18,8 @@ import florian.siepe.control.nlp.Word2VecFactory;
 import florian.siepe.entity.kb.MatchableLodColumn;
 import florian.siepe.entity.kb.MatchableTable;
 import florian.siepe.entity.kb.MatchableTableRow;
+import florian.siepe.t2k.DBpediaIndexer;
+import florian.siepe.t2k.SurfaceForms;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
 import org.deeplearning4j.text.tokenization.tokenizer.Tokenizer;
@@ -25,10 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 import static florian.siepe.utils.FileUtil.findFiles;
 
@@ -49,7 +49,7 @@ public class KnowledgeBase implements Serializable {
         this.lodParser = lodParser;
     }
 
-    public synchronized static KnowledgeBase getInstance(List<File> kbFiles) {
+    public synchronized static KnowledgeBase getInstance(List<File> kbFiles, IIndex index, SurfaceForms sForms) {
         if (kb != null) {
             return kb;
         }
@@ -61,7 +61,7 @@ public class KnowledgeBase implements Serializable {
         }
 
         kb = new KnowledgeBase();
-        kb.index(kbFiles);
+        kb.index(kbFiles, index, sForms);
         return kb;
     }
 
@@ -76,7 +76,7 @@ public class KnowledgeBase implements Serializable {
         }
     }
 
-    void index(List<File> files) {
+    void index(List<File> files, IIndex index, SurfaceForms sForms) {
         Integer tableId = 0;
         final List<File> kbFiles = findFiles(files);
 
@@ -115,6 +115,13 @@ public class KnowledgeBase implements Serializable {
         //computeClassSimilarities();
 
         LodCsvTableParser.endLoadData();
+        calculateClassWeight();
+
+        if(index!=null) {
+            System.out.println("Indexing ...");
+            DBpediaIndexer indexer = new DBpediaIndexer();
+            indexer.indexInstances(index, knowledgeIndex.getRecords().get(), knowledgeIndex.getClassIds().inverse(), sForms);
+        }
 
         serialize();
     }
@@ -163,6 +170,31 @@ public class KnowledgeBase implements Serializable {
         }
     }
 
+    public void calculateClassWeight(){
+        double max = -1;
+
+        for (Map.Entry<Integer, Integer> tableSize : knowledgeIndex.getSizePerTable().entrySet()) {
+            if (tableSize.getValue() < 1) {
+                continue;
+            }
+            if (tableSize.getValue() > max) {
+                max = tableSize.getValue();
+            }
+        }
+
+        for(Map.Entry<Integer, Integer> tableSize : knowledgeIndex.getSizePerTable().entrySet()){
+            double value = 0;
+            if (tableSize.getValue() < 1) {
+                value = 1;
+            }
+            value =tableSize.getValue()/max;
+            value = 1-value;
+            knowledgeIndex.getClassWeight().put(tableSize.getKey(), value);
+        }
+
+
+    }
+
     String normalizeClassName(final String clazz) {
         Tokenizer tokenizer = new CamelCaseTokenizer(clazz);
         tokenizer.setTokenPreProcessor(String::toLowerCase);
@@ -185,6 +217,9 @@ public class KnowledgeBase implements Serializable {
                 knowledgeIndex.addSchema(mc);
 
                 indexTranslation.put(globalId, colIdx);
+                if(tc.getUri().equals("http://www.w3.org/2000/01/rdf-schema#label")) {
+                    knowledgeIndex.setRdfsLabel(mc);
+                }
 
             } else {
                 // The property with uri has already been indexed. Add the mapping only
@@ -237,7 +272,9 @@ public class KnowledgeBase implements Serializable {
 
             knowledgeIndex.addRecord(mr);
         }
+        knowledgeIndex.getSizePerTable().put(tblIdx, table.getSize());
         knowledgeIndex.addClassIndex(tblIdx, computeClassnameFromFileName(table.getPath()));
+
     }
 
     void cleanUp(final Table table) {
