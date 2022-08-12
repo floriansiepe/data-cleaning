@@ -2,6 +2,21 @@
 
 ## Preparations
 
+### Running the model
+
+Download the pretained model & and extract it
+
+```shell script
+cd model
+wget https://drive.google.com/file/d/10ayQ4r8VE2EGJvFWEetVyjuuqSILLevj/view?usp=sharing
+tar -xzvf ontology-matching-base-uncased.tar.gz
+```
+
+Run the model
+```shell script
+python serve.py
+```
+
 ### Getting Google's Word2Vec model
 
 ```shell script
