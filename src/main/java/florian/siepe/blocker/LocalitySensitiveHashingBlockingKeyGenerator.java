@@ -19,7 +19,7 @@ import java.util.Set;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
-public class LocalitySensitiveHashingBlockingKeyGenerator extends BlockingKeyGenerator<MatchableTableRow, MatchableValue, MatchableTableColumn> {
+public class LocalitySensitiveHashingBlockingKeyGenerator extends BlockingKeyGenerator<MatchableTableRow, MatchableValue, MatchableTableRow> {
     private static final Logger logger = getLogger(LocalitySensitiveHashingBlockingKeyGenerator.class);
     private final MatchableTableRow[] universe;
     private final LSHMinHash lsh;
@@ -42,17 +42,17 @@ public class LocalitySensitiveHashingBlockingKeyGenerator extends BlockingKeyGen
         universe.addAll(secondRecords);
         this.universe = universe.toArray(MatchableTableRow[]::new);
         int numberOfBuckets = (int) Math.sqrt(this.universe.length);
-        int stages = 5;
+        int stages = 15;
 
         lsh = new LSHMinHash(stages, numberOfBuckets, this.universe.length);
     }
 
 
     @Override
-    public void generateBlockingKeys(final MatchableTableRow record, final Processable<Correspondence<MatchableValue, Matchable>> correspondences, final DataIterator<Pair<String, MatchableTableColumn>> resultCollector) {
+    public void generateBlockingKeys(final MatchableTableRow record, final Processable<Correspondence<MatchableValue, Matchable>> correspondences, final DataIterator<Pair<String, MatchableTableRow>> resultCollector) {
         final int key = getKey(record);
         final var matchableColumn = getMatchableColumn(record);
-        resultCollector.next(new Pair<>(String.valueOf(key), matchableColumn));
+        resultCollector.next(new Pair<>(String.valueOf(key), record));
     }
 
     public int getKey(final MatchableTableRow record) {

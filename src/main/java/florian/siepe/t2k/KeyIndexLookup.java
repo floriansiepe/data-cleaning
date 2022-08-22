@@ -114,7 +114,6 @@ public class KeyIndexLookup implements Serializable {
 		List<String> uniqueMatches = new ArrayList<>();
 
 		Object lbl = keyValue;
-		System.out.println(lbl.toString());
 		if (lbl != null) {
 			
 			try {
@@ -134,7 +133,11 @@ public class KeyIndexLookup implements Serializable {
 		        	if(!uniqueMatches.contains(e.getUri()))
 		            	uniqueMatches.add(e.getUri());
 		        }    
-			} catch(Exception ex) {
+			}
+			catch (ClassCastException ignored) {
+				// This should happen only rarely
+			}
+			catch(Exception ex) {
 				ex.printStackTrace();
 			}
 		}

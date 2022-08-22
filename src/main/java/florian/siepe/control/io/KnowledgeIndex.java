@@ -35,6 +35,9 @@ public class KnowledgeIndex implements Serializable {
     // translation from property id to column index per DBpedia class
     private final BiMap<Integer, BiMap<Integer, Integer>> propertyIndices = HashBiMap.create();
 
+    // translation from property id to class id to column index where this property is contained
+    private final BiMap<Integer, Map<Integer, Integer>> propertyClassIndices = HashBiMap.create();
+
     private final Map<Integer, Map<Integer, Double>> classSimilarities = new HashMap<>();
 
     // rdfs:label
@@ -127,6 +130,12 @@ public class KnowledgeIndex implements Serializable {
 
     public void addPropertyIndex(final int tblIdx, final BiMap<Integer, Integer> indexTranslation) {
         propertyIndices.put(tblIdx, indexTranslation);
+        final var propertyIds = indexTranslation.keySet();
+        for (final Integer propertyId : propertyIds) {
+            final var columnIndex = indexTranslation.get(propertyId);
+            propertyClassIndices.putIfAbsent(propertyId, new HashMap<>());
+            propertyClassIndices.get(propertyId).putIfAbsent(tblIdx, columnIndex);
+        }
     }
 
     public MatchableTableRow getRecord(final String identifier) {
@@ -191,6 +200,10 @@ public class KnowledgeIndex implements Serializable {
 
     public MatchableLodColumn getRdfsLabel() {
         return rdfsLabel;
+    }
+
+    public BiMap<Integer, Map<Integer, Integer>> getPropertyClassIndices() {
+        return propertyClassIndices;
     }
 
     public void setRdfsLabel(final MatchableLodColumn rdfsLabel) {

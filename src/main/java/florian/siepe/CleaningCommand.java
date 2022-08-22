@@ -5,8 +5,8 @@ import de.uni_mannheim.informatik.dws.winter.index.io.DefaultIndex;
 import de.uni_mannheim.informatik.dws.winter.index.io.InMemoryIndex;
 import de.uni_mannheim.informatik.dws.winter.matching.MatchingEngine;
 import de.uni_mannheim.informatik.dws.winter.model.Correspondence;
-import de.uni_mannheim.informatik.dws.winter.processing.Processable;
-import florian.siepe.control.graph.GraphFactory;
+import florian.siepe.blocker.TransformerBlocker;
+import florian.siepe.blocker.TransformerRestClient;
 import florian.siepe.control.io.KnowledgeBase;
 import florian.siepe.entity.kb.MatchableTableColumn;
 import florian.siepe.entity.kb.MatchableTableRow;
@@ -16,6 +16,7 @@ import florian.siepe.matcher.InstanceMatcher;
 import florian.siepe.matcher.PropertyMatcher;
 import florian.siepe.t2k.*;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -31,7 +32,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 public class CleaningCommand implements Runnable {
 
     private static final Logger logger = getLogger(CleaningCommand.class);
-    private final GraphFactory graphFactory;
+    private final TransformerRestClient transformerRestClient;
     @Option(names = {"-o", "--ontology"}, description = "Ontology to use (Class hierarchy)", paramLabel = "ONTOLOGY", required = true)
     File ontology;
     @Option(names = {"-kb", "--knowledge-base"}, description = "Knowledge base", paramLabel = "KB", required = true)
@@ -51,8 +52,8 @@ public class CleaningCommand implements Runnable {
     @ConfigProperty(name = "property-matcher.use-word2vec", defaultValue = "false")
     Boolean useWord2Vec;
 
-    public CleaningCommand(final GraphFactory graphFactory) {
-        this.graphFactory = graphFactory;
+    public CleaningCommand(@RestClient TransformerRestClient transformerRestClient) {
+        this.transformerRestClient = transformerRestClient;
     }
 
     @Override
@@ -69,7 +70,8 @@ public class CleaningCommand implements Runnable {
         } else{
             // load index from location that was provided
             index = new DefaultIndex(indexLocation);
-            createIndex = !new File(indexLocation).exists();
+            final var dir = new File(indexLocation);
+            createIndex = !dir.exists() || dir.listFiles().length == 0;
         }
         if(createIndex) {
             sf.loadIfRequired();
@@ -87,7 +89,7 @@ public class CleaningCommand implements Runnable {
         MatchingEngine<MatchableTableRow, MatchableTableColumn> matchingEngine = new MatchingEngine<>();
 
         // create schema correspondences between the key columns and rdfs:Label
-        Processable<Correspondence<MatchableTableColumn, MatchableTableRow>> keyCorrespondences = web.getKeys().map(new WebTableKeyToRdfsLabelCorrespondenceGenerator(kb.getKnowledgeIndex().getRdfsLabel()));
+        /*Processable<Correspondence<MatchableTableColumn, MatchableTableRow>> keyCorrespondences = web.getKeys().map(new WebTableKeyToRdfsLabelCorrespondenceGenerator(kb.getKnowledgeIndex().getRdfsLabel()));
 
         // Candidate selection
         CandidateSelection cs = new CandidateSelection(matchingEngine, index, indexLocation, web, kb, sf, keyCorrespondences);
@@ -99,8 +101,8 @@ public class CleaningCommand implements Runnable {
 
         // Candidate refinement
         CandidateRefinement cr = new CandidateRefinement(matchingEngine,  index, indexLocation, web, kb, sf, keyCorrespondences, classesPerTable);
-        instanceCorrespondences = cr.run();
-        final var instanceMatcher = new InstanceMatcher(kb.getKnowledgeIndex(), web);
+        instanceCorrespondences = cr.run();*/
+        final var instanceMatcher = new InstanceMatcher(kb.getKnowledgeIndex(), web, transformerRestClient);
         instanceMatcher.runMatching();
 
         logger.info("Property matching");
@@ -162,7 +164,7 @@ public class CleaningCommand implements Runnable {
             logger.info("Class mapping {}", classMapping);
             final var evaluation = new Evaluation(kb.getKnowledgeIndex(), web);
             evaluation.loadGoldStandard(goldStandard);
-            evaluation.evaluate(classMapping);
+            evaluation.evaluate(classMapping, threshold);
             logger.warn("Threshold was: {}", threshold);
         } catch (IOException e) {
             e.printStackTrace();

@@ -1,0 +1,5 @@
+POST http://localhost:5000/predict?k=5
+Content-Type: application/json
+Accept: application/json
+
+["abc", None]
