@@ -55,6 +55,7 @@ public class KnowledgeIndex implements Serializable {
     }
 
     public void addProperty(final String uri, final int globalId) {
+        properties.add(uri);
         propertyIds.put(uri, globalId);
     }
 

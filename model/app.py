@@ -12,6 +12,7 @@ def predict():  # put application's code here
     top_k = int(request.args.get("k"))
     if top_k is None:
         top_k = 3
+    print(texts)
     predictions = predictor.predict(texts, top_k)
     return jsonify(predictions)
 

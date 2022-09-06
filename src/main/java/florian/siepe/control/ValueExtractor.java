@@ -17,6 +17,10 @@ public class ValueExtractor {
     }
 
     public Collection<MatchableTableRow> findIndexRecords(final MatchableTableColumn column) {
+        if (column.getColumnIndex() == 23) {
+            System.out.println();
+        }
+
         return index.getRecords().where(input -> input.hasColumn(column.getColumnIndex()) && input.getTableId() == column.getTableId()).get();
     }
 

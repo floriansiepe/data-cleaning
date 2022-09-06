@@ -13,6 +13,11 @@ class Predictor:
         self.model = AutoModelForSequenceClassification.from_pretrained(model_path).to(self.device)
 
     def predict(self, texts, k):
+        texts = [text for text in texts if text is not None and isinstance(text, str)]
+
+        if len(texts) == 0:
+            return []
+
         # prepare our text into tokenized sequence
         inputs = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt").to(self.device)
         # perform inference to our model
@@ -20,6 +25,7 @@ class Predictor:
         # get output probabilities by doing softmax
         if len(outputs) == 0:
             return []
+
         probs = outputs[0].softmax(dim=1).sum(dim=0).multiply(1 / len(texts))
         # executing argmax function to get the candidate label
         probs, idxs = probs.topk(k)

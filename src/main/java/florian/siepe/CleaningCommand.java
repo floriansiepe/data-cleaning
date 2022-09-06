@@ -5,6 +5,7 @@ import de.uni_mannheim.informatik.dws.winter.index.io.DefaultIndex;
 import de.uni_mannheim.informatik.dws.winter.index.io.InMemoryIndex;
 import de.uni_mannheim.informatik.dws.winter.matching.MatchingEngine;
 import de.uni_mannheim.informatik.dws.winter.model.Correspondence;
+import de.uni_mannheim.informatik.dws.winter.processing.Processable;
 import florian.siepe.blocker.TransformerBlocker;
 import florian.siepe.blocker.TransformerRestClient;
 import florian.siepe.control.io.KnowledgeBase;
@@ -103,12 +104,12 @@ public class CleaningCommand implements Runnable {
         CandidateRefinement cr = new CandidateRefinement(matchingEngine,  index, indexLocation, web, kb, sf, keyCorrespondences, classesPerTable);
         instanceCorrespondences = cr.run();*/
         final var instanceMatcher = new InstanceMatcher(kb.getKnowledgeIndex(), web, transformerRestClient);
-        instanceMatcher.runMatching();
+        final var correspondencesMap = instanceMatcher.runMatching();
 
-        logger.info("Property matching");
+        logger.info("Instance matching");
         var threshold = 0.5;
-        final var propertyMatcher = new PropertyMatcher(useWord2Vec, threshold);
-        final var correspondencesMap = propertyMatcher.runMatching(kb.getKnowledgeIndex(), web);
+        /*final var propertyMatcher = new PropertyMatcher(useWord2Vec, threshold);
+        final var correspondencesMap = propertyMatcher.runMatching(kb.getKnowledgeIndex(), web);*/
 
         final var classMapping = new HashMap<Integer, Set<Integer>>();
         for (final var entry : correspondencesMap.entrySet()) {

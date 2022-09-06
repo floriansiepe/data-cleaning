@@ -1,5 +1,10 @@
 package florian.siepe.entity.kb;
 
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+
 import de.uni_mannheim.informatik.dws.winter.model.Fusible;
 import de.uni_mannheim.informatik.dws.winter.model.Matchable;
 import de.uni_mannheim.informatik.dws.winter.preprocessing.datatypes.DataType;
@@ -7,26 +12,16 @@ import de.uni_mannheim.informatik.dws.winter.utils.SparseArray;
 import de.uni_mannheim.informatik.dws.winter.webtables.TableColumn;
 import de.uni_mannheim.informatik.dws.winter.webtables.TableRow;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-
 /**
+ *
  * Model of a Web Table column.
  *
  * @author Oliver Lehmberg (oli@dwslab.de)
+ *
  */
 public class MatchableTableRow implements Matchable, Fusible<MatchableTableColumn>, Serializable {
 
 	private static final long serialVersionUID = 1L;
-	protected String id;
-	private DataType[] types;
-	private Object[] values;
-	private int[] indices;
-	private int rowNumber;
-	private int tableId;
-	private int rowLength; // total number of columns (including null values)
 
 	public MatchableTableRow() {
 
@@ -46,7 +41,7 @@ public class MatchableTableRow implements Matchable, Fusible<MatchableTableColum
 		this.indices = new int[values.length];
 		SparseArray<Object> valuesSparse = new SparseArray<>(values);
 		this.values = valuesSparse.getValues();
-		for (int i = 0; i < values.length; i++) {
+		for(int i=0; i<values.length;i++){
 			indices[i] = i;
 		}
 
@@ -65,11 +60,11 @@ public class MatchableTableRow implements Matchable, Fusible<MatchableTableColum
 		ArrayList<DataType> types = new ArrayList<>();
 		ArrayList<TableColumn> cols = new ArrayList<>(row.getTable().getSchema().getRecords());
 		Collections.sort(cols, new TableColumn.TableColumnByIndexComparator());
-		for (TableColumn c : cols) {
+		for(TableColumn c : cols) {
 			types.add(c.getDataType());
 		}
 
-		if (types.size() < row.getValueArray().length) {
+		if(types.size()<row.getValueArray().length) {
 			System.err.println("problem");
 		}
 
@@ -82,6 +77,14 @@ public class MatchableTableRow implements Matchable, Fusible<MatchableTableColum
 			this.types[i] = types.get(indices[i]);
 		}
 	}
+
+	protected String id;
+	private DataType[] types;
+	private Object[] values;
+	private int[] indices;
+	private int rowNumber;
+	private int tableId;
+	private int rowLength; // total number of columns (including null values)
 
 	@Override
 	public String getIdentifier() {
@@ -96,9 +99,8 @@ public class MatchableTableRow implements Matchable, Fusible<MatchableTableColum
 	public int getNumCells() {
 		return values.length;
 	}
-
 	public Object get(int columnIndex) {
-		if (indices != null) {
+		if(indices!=null) {
 			return SparseArray.get(columnIndex, values, indices);
 		} else {
 			return values[columnIndex];
@@ -107,25 +109,24 @@ public class MatchableTableRow implements Matchable, Fusible<MatchableTableColum
 
 	/**
 	 * Sets the respective value. If the value didn't exist before, the sparse representation is replaced by a dense representation, which can lead to higher memory consumption, but is faster when setting multiple values
-	 *
 	 * @param columnIndex
 	 * @param value
 	 */
 	public void set(int columnIndex, Object value) {
-		int maxLen = columnIndex + 1;
+		int maxLen = columnIndex+1;
 
-		if (indices != null) {
-			maxLen = Math.max(maxLen, indices[indices.length - 1] + 1);
+		if(indices!=null) {
+			maxLen = Math.max(maxLen, indices[indices.length-1]+1);
 
 			Object[] allValues = new Object[maxLen];
-			for (int i = 0; i < indices.length; i++) {
+			for(int i=0;i<indices.length;i++) {
 				allValues[indices[i]] = values[i];
 			}
 
 			values = allValues;
 			indices = null;
 		} else {
-			if (maxLen > values.length) {
+			if(maxLen>values.length) {
 				values = Arrays.copyOf(values, maxLen);
 			}
 		}
@@ -134,10 +135,10 @@ public class MatchableTableRow implements Matchable, Fusible<MatchableTableColum
 	}
 
 	public DataType getType(int columnIndex) {
-		if (indices != null) {
+		if(indices!=null) {
 			int idx = SparseArray.translateIndex(columnIndex, indices);
 
-			if (idx == -1) {
+			if(idx==-1) {
 				return null;
 			} else {
 				return types[idx];
@@ -146,19 +147,15 @@ public class MatchableTableRow implements Matchable, Fusible<MatchableTableColum
 			return types[columnIndex];
 		}
 	}
-
 	public Object[] getValues() {
 		return values;
 	}
-
 	public DataType[] getTypes() {
 		return types;
 	}
-
 	public int getRowNumber() {
 		return rowNumber;
 	}
-
 	public int getTableId() {
 		return tableId;
 	}
@@ -171,10 +168,10 @@ public class MatchableTableRow implements Matchable, Fusible<MatchableTableColum
 	}
 
 	public boolean hasColumn(int columnIndex) {
-		if (indices != null) {
+		if(indices!=null) {
 			int idx = SparseArray.translateIndex(columnIndex, indices);
 
-			return idx != -1;
+			return idx!=-1;
 		} else {
 			return columnIndex < values.length;
 		}
@@ -186,28 +183,28 @@ public class MatchableTableRow implements Matchable, Fusible<MatchableTableColum
 	 */
 	@Override
 	public boolean hasValue(MatchableTableColumn attribute) {
-		return hasColumn(attribute.getColumnIndex()) && get(attribute.getColumnIndex()) != null;
+		return hasColumn(attribute.getColumnIndex()) && get(attribute.getColumnIndex())!=null;
 	}
 
 	public String format(int columnWidth) {
 		StringBuilder sb = new StringBuilder();
 
-		boolean first = true;
-		for (int i = 0; i < rowLength; i++) {
+		boolean first=true;
+		for(int i = 0; i < rowLength; i++) {
 
-			if (!first) {
+			if(!first) {
 				sb.append(" | ");
 			}
 
 			String value;
-			if (hasColumn(i)) {
+			if(hasColumn(i)) {
 				Object v = get(i);
 				value = v.toString();
 			} else {
 				value = "null";
 			}
 
-			sb.append(padRight(value, columnWidth));
+			sb.append(padRight(value,columnWidth));
 
 			first = false;
 		}
@@ -216,7 +213,7 @@ public class MatchableTableRow implements Matchable, Fusible<MatchableTableColum
 	}
 
 	protected String padRight(String s, int n) {
-		if (n == 0) {
+		if(n==0) {
 			return "";
 		}
 		if (s.length() > n) {
@@ -224,30 +221,5 @@ public class MatchableTableRow implements Matchable, Fusible<MatchableTableColum
 		}
 		s = s.replace("\n", " ");
 		return String.format("%1$-" + n + "s", s);
-	}
-
-	@Override
-	public String toString() {
-		return String.format("Id: %s, Table Id: %d, Row Id: %d", id, tableId, rowNumber);
-	}
-
-	@Override
-	public boolean equals(final Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		final MatchableTableRow that = (MatchableTableRow) o;
-
-		if (rowNumber != that.rowNumber) return false;
-		if (tableId != that.tableId) return false;
-		return id != null ? id.equals(that.id) : that.id == null;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = id != null ? id.hashCode() : 0;
-		result = 31 * result + rowNumber;
-		result = 31 * result + tableId;
-		return result;
 	}
 }

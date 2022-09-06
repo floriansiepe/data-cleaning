@@ -40,3 +40,4 @@ nb-configuration.xml
 
 # Project specific
 *.log
+/model/ontology-matching-base-uncased.tar.gz

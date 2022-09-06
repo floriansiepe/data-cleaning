@@ -1,4 +1,6 @@
 package florian.siepe.entity.kb;
+import java.io.Serializable;
+import java.util.Map;
 
 import de.uni_mannheim.informatik.dws.winter.model.Fusible;
 import de.uni_mannheim.informatik.dws.winter.model.Matchable;
@@ -6,17 +8,15 @@ import de.uni_mannheim.informatik.dws.winter.preprocessing.datatypes.DataType;
 import de.uni_mannheim.informatik.dws.winter.webtables.TableColumn;
 import de.uni_mannheim.informatik.dws.winter.webtables.TableColumnStatistics;
 
-import java.io.Serializable;
-import java.util.Map;
-
 /**
+ *
  * Model of a Web Table column.
  *
  * @author Oliver Lehmberg (oli@dwslab.de)
+ *
  */
 public class MatchableTableColumn implements Matchable, Fusible<MatchableTableColumn>, Comparable<MatchableTableColumn>, Serializable {
 
-	public static final int CSV_LENGTH = 4;
 	private static final long serialVersionUID = 1L;
 	protected int tableId;
 	protected int columnIndex;
@@ -26,46 +26,12 @@ public class MatchableTableColumn implements Matchable, Fusible<MatchableTableCo
 	protected TableColumnStatistics statistics;
 	protected Object min, max;
 
-	public MatchableTableColumn() {
-
-	}
-
-	public MatchableTableColumn(int tableId, int columnIndex, String header, DataType type) {
-		this.tableId = tableId;
-		this.columnIndex = columnIndex;
-		this.id = "";
-		this.header = header;
-		this.type = type;
-	}
-
-	public MatchableTableColumn(int tableId, TableColumn c) {
-		this.tableId = tableId;
-		this.columnIndex = c.getColumnIndex();
-		this.type = c.getDataType();
-		this.header = c.getHeader();
-
-		// this controls the schema that we are matching to!
-		// using c.getIdentifier() all dbp properties only exist once! (i.e. we cannot handle "_label" columns and the value of tableId is more or less random
-		this.id = c.getUniqueName();
-	}
-
-	public static MatchableTableColumn fromCSV(String[] values, Map<String, Integer> tableIndices) {
-		MatchableTableColumn c = new MatchableTableColumn();
-		c.tableId = tableIndices.get(values[0]);
-		c.columnIndex = Integer.parseInt(values[1]);
-		c.type = DataType.valueOf(values[2]);
-		c.id = values[3];
-		return c;
-	}
-
 	public int getTableId() {
 		return tableId;
 	}
-
 	public int getColumnIndex() {
 		return columnIndex;
 	}
-
 	protected void setColumnIndex(int index) {
 		columnIndex = index;
 	}
@@ -76,7 +42,6 @@ public class MatchableTableColumn implements Matchable, Fusible<MatchableTableCo
 	public String getHeader() {
 		return header;
 	}
-
 	/**
 	 * @param header the header to set
 	 */
@@ -98,6 +63,42 @@ public class MatchableTableColumn implements Matchable, Fusible<MatchableTableCo
 		this.statistics = statistics;
 	}
 
+
+
+	public static final int CSV_LENGTH = 4;
+
+	public static MatchableTableColumn fromCSV(String[] values, Map<String, Integer> tableIndices) {
+		MatchableTableColumn c = new MatchableTableColumn();
+		c.tableId = tableIndices.get(values[0]);
+		c.columnIndex = Integer.parseInt(values[1]);
+		c.type = DataType.valueOf(values[2]);
+		c.id = values[3];
+		return c;
+	}
+
+	public MatchableTableColumn() {
+
+	}
+
+	public MatchableTableColumn(int tableId, int columnIndex, String header, DataType type){
+		this.tableId = tableId;
+		this.columnIndex = columnIndex;
+		this.id = "";
+		this.header = header;
+		this.type = type;
+	}
+
+	public MatchableTableColumn(int tableId, TableColumn c) {
+		this.tableId = tableId;
+		this.columnIndex = c.getColumnIndex();
+		this.type = c.getDataType();
+		this.header = c.getHeader();
+
+		// this controls the schema that we are matching to!
+		// using c.getIdentifier() all dbp properties only exist once! (i.e. we cannot handle "_label" columns and the value of tableId is more or less random
+		this.id = c.getUniqueName();
+	}
+
 	@Override
 	public String getIdentifier() {
 		return id;
@@ -114,7 +115,6 @@ public class MatchableTableColumn implements Matchable, Fusible<MatchableTableCo
 	public DataType getType() {
 		return type;
 	}
-
 	/* (non-Javadoc)
 	 * @see de.uni_mannheim.informatik.wdi.model.Fusable#hasValue(java.lang.Object)
 	 */
@@ -129,21 +129,18 @@ public class MatchableTableColumn implements Matchable, Fusible<MatchableTableCo
 	public Object getMin() {
 		return min;
 	}
-
-	/**
-	 * @param min the min to set
-	 */
-	public void setMin(Object min) {
-		this.min = min;
-	}
-
 	/**
 	 * @return the max
 	 */
 	public Object getMax() {
 		return max;
 	}
-
+	/**
+	 * @param min the min to set
+	 */
+	public void setMin(Object min) {
+		this.min = min;
+	}
 	/**
 	 * @param max the max to set
 	 */
@@ -172,8 +169,8 @@ public class MatchableTableColumn implements Matchable, Fusible<MatchableTableCo
 	 */
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof MatchableTableColumn) {
-			MatchableTableColumn col = (MatchableTableColumn) obj;
+		if(obj instanceof MatchableTableColumn) {
+			MatchableTableColumn col = (MatchableTableColumn)obj;
 			return getIdentifier().equals(col.getIdentifier());
 		} else {
 			return super.equals(obj);

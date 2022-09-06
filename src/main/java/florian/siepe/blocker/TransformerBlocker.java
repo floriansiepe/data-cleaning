@@ -36,7 +36,7 @@ public class TransformerBlocker {
     public Map<MatchableTableColumn, List<MatchableTableColumn>> generateCandidates(List<MatchableTableColumn> webTableColumns) {
         final HashMap<MatchableTableColumn, List<MatchableTableColumn>> candidates = new HashMap<>();
         for (final MatchableTableColumn webTableColumn : webTableColumns) {
-            final var predictedClasses = transformerClient.predict(extractWebTableSamples(webTableColumn, K), 5);
+            final var predictedClasses = transformerClient.predict(extractWebTableSamples(webTableColumn, K), 20);
             final var blockedCandidates = predictedClasses
                     .stream()
                     .collect(groupingBy(blockingCandidateResponse -> blockingCandidateResponse.key))
@@ -58,6 +58,7 @@ public class TransformerBlocker {
                     .sorted(Comparator.comparing(BlockingCandidateResponse::getProb, Comparator.reverseOrder()))
                     // This is just for now to filter http://www.w3.org/2000/01/rdf-schema#label
                     .filter(blockingCandidateResponse -> !blockingCandidateResponse.getKey().equals(index.getRdfsLabel().getIdentifier()))
+                    .limit(10)
                     .flatMap(blockingCandidateResponse -> {
                         var propertyId = index.getPropertyIds().get(blockingCandidateResponse.key);
                         if (propertyId == null) {

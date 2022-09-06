@@ -34,7 +34,7 @@ public class SampleExtractor {
     public List<String> extractValue(MatchableTableColumn column, int k, List<MatchableTableRow> values) {
         return extractValue(k, values, matchableTableRow -> {
             try {
-                return String.valueOf(matchableTableRow.getValues()[column.getColumnIndex()]);
+                return String.valueOf(matchableTableRow.get(column.getColumnIndex()));
             } catch (IndexOutOfBoundsException e) {
                 // This can happen if a row is corrupted. Ignore value
                 return null;

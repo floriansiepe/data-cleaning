@@ -80,11 +80,9 @@ public class KnowledgeBase implements Serializable {
         Integer tableId = 0;
         final List<File> kbFiles = findFiles(files);
 
-        final var unis = new LinkedList<Uni<Object>>();
 
         for (File file : kbFiles) {
             final int finalTableId = tableId;
-            final var uni = Uni.createFrom().item(() -> {
                 logger.info("Loading table {}", file.getName());
                 final var table = lodParser.parseTable(file);
                 table.setTableId(finalTableId);
@@ -103,13 +101,9 @@ public class KnowledgeBase implements Serializable {
                     cleanUp(table);
                     indexTableSchema(table);
                 }
-                return null;
-            }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
             tableId++;
-            unis.add(uni);
         }
 
-        Uni.join().all(unis).usingConcurrencyOf(1).andCollectFailures().await().indefinitely();
 
         addMissingClasses(tableId);
         //computeClassSimilarities();
@@ -211,9 +205,9 @@ public class KnowledgeBase implements Serializable {
         BiMap<Integer, Integer> indexTranslation = HashBiMap.create();
         for (TableColumn tc : table.getSchema().getRecords()) {
             if (!knowledgeIndex.hasProperty(tc.getUri())) {
-                int globalId = globalIdProvider.get();
+                int globalId = knowledgeIndex.getProperties().size();
                 knowledgeIndex.addProperty(tc.getUri(), globalId);
-                MatchableLodColumn mc = new MatchableLodColumn(table.getTableId(), tc, globalId);
+                MatchableLodColumn mc = new MatchableLodColumn(0, tc, globalId);
                 knowledgeIndex.addSchema(mc);
 
                 indexTranslation.put(globalId, colIdx);

@@ -14,8 +14,10 @@ import florian.siepe.entity.kb.WebTables;
 import info.debatty.java.lsh.LSHMinHash;
 import org.slf4j.Logger;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -42,7 +44,7 @@ public class LocalitySensitiveHashingBlockingKeyGenerator extends BlockingKeyGen
         universe.addAll(secondRecords);
         this.universe = universe.toArray(MatchableTableRow[]::new);
         int numberOfBuckets = (int) Math.sqrt(this.universe.length);
-        int stages = 15;
+        int stages = 50;
 
         lsh = new LSHMinHash(stages, numberOfBuckets, this.universe.length);
     }
@@ -51,13 +53,29 @@ public class LocalitySensitiveHashingBlockingKeyGenerator extends BlockingKeyGen
     @Override
     public void generateBlockingKeys(final MatchableTableRow record, final Processable<Correspondence<MatchableValue, Matchable>> correspondences, final DataIterator<Pair<String, MatchableTableRow>> resultCollector) {
         final int key = getKey(record);
-        final var matchableColumn = getMatchableColumn(record);
+        //final var matchableColumn = getMatchableColumn(record);
         resultCollector.next(new Pair<>(String.valueOf(key), record));
     }
 
-    public int getKey(final MatchableTableRow record) {
+    public Stream<Integer> getKeys(final MatchableTableRow record) {
         final var hash = lsh.hash(vectorize(record));
-        return hash[hash.length - 1];
+
+        return Arrays.stream(hash)
+                .boxed()
+                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
+                .entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .limit(2);
+    }
+
+    public int getKey(final MatchableTableRow record) {
+        var keys = getKeys(record).toArray(Integer[]::new);
+        if (keys.length > 0) {
+            return keys[0];
+        }
+        return -1;
     }
 
     private MatchableTableColumn getMatchableColumn(final MatchableTableRow record) {
