@@ -17,9 +17,10 @@ wget https://drive.google.com/file/d/10ayQ4r8VE2EGJvFWEetVyjuuqSILLevj/view?usp=
 tar -xzvf ontology-matching-base-uncased.tar.gz
 ```
 
-Install the requirements
+Create virtual environment and install the requirements
 
 ```shell script
+python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -41,16 +42,12 @@ wget -P data https://dl4jdata.blob.core.windows.net/resources/wordvectors/Google
 If you are not using Linux x86 you need to adapt the `cpu.arch` property in the [pom.xml](pom.xml) according to your
 machine.
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
-
-If you want to learn more about Quarkus, please visit its website: https://quarkus.io/ .
-
 ## Running the application in dev mode
 
 You can run your application in dev mode that enables live coding using:
 
 ```shell script
-./mvnw compile quarkus:dev
+./mvnw compile quarkus:dev -Dquarkus.args="instance -kb data/dbpedia -t 0.5 -wt data/webtables/" -Dquarkus.log.level=WARN
 ```
 
 > **_NOTE:_** If using Word2Vec you need to increase the memory limit of the JVM. E.g. execute
