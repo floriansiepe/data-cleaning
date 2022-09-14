@@ -26,7 +26,7 @@ import static java.util.stream.Collectors.groupingBy;
 /*
 Currently not working properly
  */
-public class InstanceMatcher {
+public class InstanceMatcher implements Matcher {
     private static final Logger logger = LoggerFactory.getLogger(InstanceMatcher.class);
     private final KnowledgeIndex index;
     private final WebTables webTables;
@@ -58,6 +58,7 @@ public class InstanceMatcher {
                 .collect(groupingBy(localitySensitiveHashingBlockingKeyGenerator::getKey));
     }
 
+    @Override
     public Map<Integer, Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>>> runMatching() {
         var correspondences = new HashMap<Integer, Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>>>();
         var webTableColumnsByTableId = this.webTables.getSchema().get().stream().collect(groupingBy(MatchableTableColumn::getTableId));
@@ -76,11 +77,6 @@ public class InstanceMatcher {
                     tableCorrespondences.add(correspondence);
                 }
             }
-            //correspondences.put(webTableId, runMatching(webTableColumns, in));
-            /*for (final Integer indexTableId : index.getTableIds().values()) {
-                final var indexColumns = index.getPropertyIndices().get(indexTableId).values().stream().map(columnId -> index.findColumn(indexTableId, columnId)).collect(Collectors.toSet());
-                runMatching(webTableColumns, indexColumns);
-            }*/
             correspondences.put(webTableId, tableCorrespondences);
         }
 
@@ -108,7 +104,7 @@ public class InstanceMatcher {
     }
 
     private Correspondence<MatchableTableColumn, MatchableTableColumn> runMatching(final MatchableTableColumn indexColumn, final MatchableTableColumn webColumn) {
-        InstanceMatcher.logger.debug("Start Matching");
+        InstanceMatcher.logger.debug("Start Matcher");
         if (indexColumn.getType() != webColumn.getType()) {
             throw new RuntimeException("Data types are not matching: " + indexColumn.getType() + " and " + webColumn.getType());
         }
@@ -214,7 +210,7 @@ public class InstanceMatcher {
     }
 
     private double computeBlockSimilarity(double[][] similarities) {
-        // Formula is from https://dbs.uni-leipzig.de/file/BTW-Workshop_2007_EngmannMassmann.pdf 2.3 Content-based Matching
+        // Formula is from https://dbs.uni-leipzig.de/file/BTW-Workshop_2007_EngmannMassmann.pdf 2.3 Content-based Matcher
         final int frameHeight = similarities.length;
         if (0 == frameHeight) {
             return 0;
@@ -256,52 +252,4 @@ public class InstanceMatcher {
         InstanceMatcher.logger.debug("{} {}", maxLeftSide, maxRightSide);
         return (maxLeftSide + maxRightSide) / (frameWidth + frameHeight - frameCorrection);
     }
-
-
-
-    /*public HashMap<Integer, Processable<Correspondence<MatchableTableRow, MatchableTableColumn>>> runMatching(KnowledgeIndex index, WebTables webTables) {
-        // Use the table id as key
-        final var correspondences = new HashMap<Integer, Processable<Correspondence<MatchableTableRow, MatchableTableColumn>>>();
-
-        final var webTableColumnsByTableId = webTables.getSchema().get().stream().collect(groupingBy(MatchableTableColumn::getTableId));
-
-
-        for (final var entry : webTableColumnsByTableId.entrySet()) {
-            final var tableId = entry.getKey();
-            final var columns = entry.getValue();
-            correspondences.put(tableId, runMatching(index, columns));
-        }
-        return correspondences;
-    }
-
-    private Processable<Correspondence<MatchableTableRow, MatchableTableColumn>> runMatching(final KnowledgeIndex index, final List<MatchableTableColumn> columns) {
-        final var webTableColumnSet = new HashedDataSet<MatchableTableRow, MatchableTableColumn>(columns);
-        return runMatching(index.getSchema(), webTableColumnSet, null);
-    }
-
-
-    public Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>> runMatching(final DataSet<MatchableTableColumn, MatchableTableColumn> dataSet, final DataSet<MatchableTableColumn, MatchableTableColumn> dataSet1, final Processable<Correspondence<MatchableTableColumn, Matchable>> processable) {
-        MatchingEngine<MatchableTableRow, MatchableTableColumn> engine = new MatchingEngine<>();
-
-
-        /*
-        // define a blocker that uses the attribute values to generate pairs
-        var blocker = new ClassAndTypeBasedSchemaBlocker();
-
-
-        // to calculate the similarity score, aggregate the pairs by counting
-        // and normalise with the number of record in the smaller dataset
-        // (= the maximum number of records that can match)
-        var aggregator
-                = new VotingAggregator<>(
-                false,
-                Math.min(dataSet.size(), dataSet1.size()),
-                0.0);
-
-        try {
-            return engine.runInstanceBasedSchemaMatching(dataSet, dataSet1, null);
-        } catch (Exception e) {
-            return new ProcessableCollection<>();
-        }
-    }*/
 }

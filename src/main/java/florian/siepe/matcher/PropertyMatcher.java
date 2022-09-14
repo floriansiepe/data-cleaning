@@ -4,7 +4,6 @@ import de.uni_mannheim.informatik.dws.winter.matching.MatchingEngine;
 import de.uni_mannheim.informatik.dws.winter.model.Correspondence;
 import de.uni_mannheim.informatik.dws.winter.model.DataSet;
 import de.uni_mannheim.informatik.dws.winter.model.HashedDataSet;
-import de.uni_mannheim.informatik.dws.winter.model.Matchable;
 import de.uni_mannheim.informatik.dws.winter.processing.Processable;
 import de.uni_mannheim.informatik.dws.winter.processing.ProcessableCollection;
 import de.uni_mannheim.informatik.dws.winter.similarity.string.TokenizingJaccardSimilarity;
@@ -23,23 +22,40 @@ import java.util.List;
 
 import static java.util.stream.Collectors.groupingBy;
 
-public class PropertyMatcher {
+public class PropertyMatcher implements Matcher {
     private static final Logger logger = LoggerFactory.getLogger(PropertyMatcher.class);
     private final double threshold;
+    private final KnowledgeIndex index;
+    private final WebTables webTables;
     private final Word2VecFactory word2VecFactory;
 
-    public PropertyMatcher(final boolean useWord2Vec, double threshold) {
+    public PropertyMatcher(final KnowledgeIndex index, final WebTables webTables, final boolean useWord2Vec, double threshold) {
+        this.index = index;
+        this.webTables = webTables;
         // In dev profile use more lightweight function
         this.word2VecFactory = useWord2Vec ? Word2VecFactory.getInstance() : null;
         this.threshold = threshold;
     }
 
+    @Override
+    public HashMap<Integer, Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>>> runMatching() {
+        // Use the table id as key
+        var correspondences = new HashMap<Integer, Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>>>();
 
-    public Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>> runMatching(DataSet<MatchableTableColumn, MatchableTableColumn> dataSet, DataSet<MatchableTableColumn, MatchableTableColumn> dataSet1, Processable<Correspondence<MatchableTableColumn, Matchable>> processable) {
+        var webTableColumnsByTableId = webTables.getSchema().get().stream().collect(groupingBy(MatchableTableColumn::getTableId));
+
+        for (var entry : webTableColumnsByTableId.entrySet()) {
+            var webTableId = entry.getKey();
+            var columns = entry.getValue();
+            correspondences.put(webTableId, this.runMatching(index, columns));
+        }
+        return correspondences;
+    }
+
+    private Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>> runMatching(DataSet<MatchableTableColumn, MatchableTableColumn> dataSet, DataSet<MatchableTableColumn, MatchableTableColumn> dataSet1) {
         final MatchingEngine<MatchableTableColumn, MatchableTableColumn> engine = new MatchingEngine<>();
 
         var jaccardComparator = new TableColumnComparator(new TokenizingJaccardSimilarity());
-        //final var matchingRule = new LinearCombinationMatchingRule<MatchableTableColumn, MatchableTableColumn>(0.6);
         var matchingRule = new MaxMatchingRule<MatchableTableColumn, MatchableTableColumn>(0.5);
 
         if (null != word2VecFactory) {
@@ -55,22 +71,8 @@ public class PropertyMatcher {
         }
     }
 
-    public HashMap<Integer, Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>>> runMatching(final KnowledgeIndex index, final WebTables webTables) {
-        // Use the table id as key
-        var correspondences = new HashMap<Integer, Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>>>();
-
-        var webTableColumnsByTableId = webTables.getSchema().get().stream().collect(groupingBy(MatchableTableColumn::getTableId));
-
-        for (var entry : webTableColumnsByTableId.entrySet()) {
-            var webTableId = entry.getKey();
-            var columns = entry.getValue();
-            correspondences.put(webTableId, this.runMatching(index, columns));
-        }
-        return correspondences;
-    }
-
     private Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>> runMatching(KnowledgeIndex index, List<MatchableTableColumn> columns) {
         var webTableColumnSet = new HashedDataSet<MatchableTableColumn, MatchableTableColumn>(columns);
-        return this.runMatching(index.getSchema(), webTableColumnSet, null);
+        return this.runMatching(index.getSchema(), webTableColumnSet);
     }
 }
