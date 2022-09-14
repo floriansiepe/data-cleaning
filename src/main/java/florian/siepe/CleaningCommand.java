@@ -28,7 +28,7 @@ public class CleaningCommand implements Runnable {
     MatcherType matcherType;
     @Option(names = {"-kb", "--knowledge-base"}, description = "Knowledge base", paramLabel = "KB", required = true)
     List<File> knowledgeBase;
-    @Option(names = {"-t", "--tables"}, description = "Tables to clean", paramLabel = "TABLES", required = true)
+    @Option(names = {"-wt", "--webtables"}, description = "Tables to clean", paramLabel = "TABLES", required = true)
     List<File> tables;
 
     @Option(names = {"-g", "--gold-standard"}, defaultValue = "data/gs_property.csv")
