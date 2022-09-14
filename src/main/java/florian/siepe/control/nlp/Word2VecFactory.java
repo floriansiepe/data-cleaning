@@ -17,55 +17,55 @@ public class Word2VecFactory extends SimilarityMeasure<String> implements Closea
     private static Word2VecFactory service;
     private Word2Vec word2Vec;
 
-    public synchronized static Word2VecFactory getInstance() {
-        if (service != null) {
-            return service;
+    public static synchronized Word2VecFactory getInstance() {
+        if (null != service) {
+            return Word2VecFactory.service;
         }
 
-        service = new Word2VecFactory();
-        service.readModel();
-        return service;
+        Word2VecFactory.service = new Word2VecFactory();
+        Word2VecFactory.service.readModel();
+        return Word2VecFactory.service;
     }
 
     public void readModel() {
-        logger.info("Loading Google's Word2Vec model... This may take some time");
-        File gModel = new File(WORD_2_VEC_MODEL);
-        word2Vec = WordVectorSerializer.readWord2VecModel(gModel);
+        Word2VecFactory.logger.info("Loading Google's Word2Vec model... This may take some time");
+        final File gModel = new File(Word2VecFactory.WORD_2_VEC_MODEL);
+        this.word2Vec = WordVectorSerializer.readWord2VecModel(gModel);
     }
 
     public void closeModel() {
-        if (word2Vec != null) {
-            logger.info("Closing Word2Vec model");
-            word2Vec = null;
+        if (null != word2Vec) {
+            Word2VecFactory.logger.info("Closing Word2Vec model");
+            this.word2Vec = null;
         }
     }
 
     @Override
-    public double calculate(String first, String second) {
-        if (word2Vec == null) {
-            readModel();
+    public double calculate(final String first, final String second) {
+        if (null == word2Vec) {
+            this.readModel();
         }
 
-        return word2Vec.similarity(first, second);
+        return this.word2Vec.similarity(first, second);
     }
 
-    public Collection<String> wordsNearest(String str) {
-        return wordsNearest(str, 10);
+    public Collection<String> wordsNearest(final String str) {
+        return this.wordsNearest(str, 10);
     }
 
-    public Collection<String> wordsNearest(String str, int amount) {
-        if (word2Vec == null) {
-            readModel();
+    public Collection<String> wordsNearest(final String str, final int amount) {
+        if (null == word2Vec) {
+            this.readModel();
         }
-        return word2Vec.wordsNearest(str, amount);
+        return this.word2Vec.wordsNearest(str, amount);
     }
 
     public Word2Vec getWord2Vec() {
-        return word2Vec;
+        return this.word2Vec;
     }
 
     @Override
     public void close() {
-        this.closeModel();
+        closeModel();
     }
 }

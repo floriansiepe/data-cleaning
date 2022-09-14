@@ -6,96 +6,79 @@ import de.uni_mannheim.informatik.dws.winter.model.Matchable;
 import de.uni_mannheim.informatik.dws.winter.model.MatchableValue;
 import de.uni_mannheim.informatik.dws.winter.model.Pair;
 import de.uni_mannheim.informatik.dws.winter.processing.DataIterator;
+import de.uni_mannheim.informatik.dws.winter.processing.Function;
 import de.uni_mannheim.informatik.dws.winter.processing.Processable;
-import florian.siepe.control.io.KnowledgeIndex;
-import florian.siepe.entity.kb.MatchableTableColumn;
 import florian.siepe.entity.kb.MatchableTableRow;
-import florian.siepe.entity.kb.WebTables;
 import info.debatty.java.lsh.LSHMinHash;
-import org.slf4j.Logger;
 
-import java.util.*;
-import java.util.function.Function;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.slf4j.LoggerFactory.getLogger;
-
 public class LocalitySensitiveHashingBlockingKeyGenerator extends BlockingKeyGenerator<MatchableTableRow, MatchableValue, MatchableTableRow> {
-    private static final Logger logger = getLogger(LocalitySensitiveHashingBlockingKeyGenerator.class);
     private final MatchableTableRow[] universe;
     private final LSHMinHash lsh;
-    private final WebTables webTables;
-    private final KnowledgeIndex index;
     private final Set<MatchableTableRow> firstRecords;
-    private final Set<MatchableTableRow> secondRecords;
-    private final int columnIndex1;
-    private final int columnIndex2;
+    private final Function<Object, MatchableTableRow> columnProvider1;
+    private final Function<Object, MatchableTableRow> columnProvider2;
 
 
-    public LocalitySensitiveHashingBlockingKeyGenerator(WebTables webTables, KnowledgeIndex index, final Set<MatchableTableRow> firstRecords, final Set<MatchableTableRow> secondRecords, final int columnIndex1, final int columnIndex2) {
-        this.webTables = webTables;
-        this.index = index;
+    public LocalitySensitiveHashingBlockingKeyGenerator(Set<MatchableTableRow> firstRecords, Set<MatchableTableRow> secondRecords, Function<Object, MatchableTableRow> columnProvider1, Function<Object, MatchableTableRow> columnProvider2) {
         this.firstRecords = firstRecords;
-        this.secondRecords = secondRecords;
-        this.columnIndex1 = columnIndex1;
-        this.columnIndex2 = columnIndex2;
-        final var universe = new HashSet<>(firstRecords);
+        this.columnProvider1 = columnProvider1;
+        this.columnProvider2 = columnProvider2;
+        var universe = new HashSet<>(firstRecords);
         universe.addAll(secondRecords);
         this.universe = universe.toArray(MatchableTableRow[]::new);
-        int numberOfBuckets = (int) Math.sqrt(this.universe.length);
-        int stages = 50;
-
-        lsh = new LSHMinHash(stages, numberOfBuckets, this.universe.length);
+        final int numberOfBuckets = (int) Math.sqrt(this.universe.length);
+        final int stages = 1 < numberOfBuckets ? (int) Math.ceil(Math.log(numberOfBuckets) / Math.log(2)) : 1;
+        this.lsh = new LSHMinHash(stages, numberOfBuckets, this.universe.length);
     }
 
 
     @Override
-    public void generateBlockingKeys(final MatchableTableRow record, final Processable<Correspondence<MatchableValue, Matchable>> correspondences, final DataIterator<Pair<String, MatchableTableRow>> resultCollector) {
-        final int key = getKey(record);
-        //final var matchableColumn = getMatchableColumn(record);
+    public void generateBlockingKeys(MatchableTableRow record, Processable<Correspondence<MatchableValue, Matchable>> correspondences, DataIterator<Pair<String, MatchableTableRow>> resultCollector) {
+        int key = this.getKey(record);
         resultCollector.next(new Pair<>(String.valueOf(key), record));
     }
 
-    public Stream<Integer> getKeys(final MatchableTableRow record) {
-        final var hash = lsh.hash(vectorize(record));
+    public Stream<Integer> getKeys(MatchableTableRow record) {
+        var hash = this.lsh.hash(this.vectorize(record));
 
         return Arrays.stream(hash)
                 .boxed()
-                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
+                .collect(Collectors.groupingBy(java.util.function.Function.identity(), Collectors.counting()))
                 .entrySet()
                 .stream()
                 .sorted(Map.Entry.comparingByValue())
                 .map(Map.Entry::getKey)
-                .limit(2);
+                .limit(5);
     }
 
-    public int getKey(final MatchableTableRow record) {
-        var keys = getKeys(record).toArray(Integer[]::new);
-        if (keys.length > 0) {
+    public int getKey(MatchableTableRow record) {
+        final var keys = this.getKeys(record).toArray(Integer[]::new);
+        if (0 < keys.length) {
             return keys[0];
         }
         return -1;
     }
 
-    private MatchableTableColumn getMatchableColumn(final MatchableTableRow record) {
-        if (firstRecords.contains(record)) {
-            return index.findColumn(record.getTableId(), columnIndex1);
-        } else {
-            return webTables.findColumn(record.getTableId(), columnIndex2);
-        }
-    }
+    private boolean[] vectorize(final MatchableTableRow record) {
+        final var recordProvider = this.firstRecords.contains(record) ? this.columnProvider1 : this.columnProvider2;
 
-    private boolean[] vectorize(MatchableTableRow record) {
-        var recordColIndex = firstRecords.contains(record) ? columnIndex1 : columnIndex2;
+        var vector = new boolean[this.universe.length];
+        for (int i = 0; i < this.universe.length; i++) {
 
-        final var vector = new boolean[universe.length];
-        for (int i = 0; i < universe.length; i++) {
+            final var universeProvider = this.firstRecords.contains(this.universe[i]) ? this.columnProvider1 : this.columnProvider2;
 
-            var universeColIndex = firstRecords.contains(universe[i]) ? columnIndex1 : columnIndex2;
-
-            final var universeValue = universe[i].get(universeColIndex);
-            final var recordValue = record.get(recordColIndex);
+            var universeValue = universeProvider.execute(this.universe[i]);
+            if (null == universeValue) {
+                System.out.println();
+            }
+            var recordValue = recordProvider.execute(record);
             if (universeValue.equals(recordValue)) {
                 vector[i] = true;
             }

@@ -6,19 +6,19 @@ import de.uni_mannheim.informatik.dws.winter.webtables.WebTablesStringNormalizer
 public class WebStringNormalizingSimilarity extends SimilarityMeasure<String> {
     private final SimilarityMeasure<String> measure;
 
-    public WebStringNormalizingSimilarity(final SimilarityMeasure<String> measure) {
+    public WebStringNormalizingSimilarity(SimilarityMeasure<String> measure) {
         this.measure = measure;
     }
 
     @Override
-    public double calculate(final String first, final String second) {
-        if(first==null || second==null) {
+    public double calculate(String first, String second) {
+        if (null == first || null == second) {
             return 0.0;
         }
 
-        String s1 = WebTablesStringNormalizer.normaliseValue(first, true) + "";
-        String s2 = WebTablesStringNormalizer.normaliseValue(second, true) + "";
+        final String s1 = WebTablesStringNormalizer.normaliseValue(first, true);
+        final String s2 = WebTablesStringNormalizer.normaliseValue(second, true);
 
-        return measure.calculate(s1, s2);
+        return this.measure.calculate(s1, s2);
     }
 }

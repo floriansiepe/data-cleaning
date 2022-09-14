@@ -3,9 +3,11 @@ package florian.siepe.control.io;
 import java.io.Serializable;
 
 public class GlobalIdProvider implements Serializable {
-    private int ids = 0;
+    private int ids;
 
     public synchronized int get() {
-        return ids++;
+        int i = this.ids;
+        this.ids++;
+        return i;
     }
 }

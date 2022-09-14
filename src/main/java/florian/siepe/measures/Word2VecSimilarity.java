@@ -9,13 +9,13 @@ public class Word2VecSimilarity extends SimilarityMeasure<String> {
     private static final Logger logger = LoggerFactory.getLogger(Word2VecSimilarity.class);
     private final Word2Vec word2Vec;
 
-    public Word2VecSimilarity(final Word2Vec word2Vec) {
+    public Word2VecSimilarity(Word2Vec word2Vec) {
         this.word2Vec = word2Vec;
     }
 
     @Override
-    public double calculate(final String s1, final String s2) {
-        logger.debug("{} - {}", s1, s2);
-        return word2Vec.similarity(s1, s2);
+    public double calculate(String s1, String s2) {
+        Word2VecSimilarity.logger.debug("{} - {}", s1, s2);
+        return this.word2Vec.similarity(s1, s2);
     }
 }

@@ -15,39 +15,38 @@ public class MaxMatchingRule<RecordType extends Matchable, SchemaElementType ext
     private final List<Comparator<RecordType, SchemaElementType>> comparators = new ArrayList<>();
 
     @SafeVarargs
-    public MaxMatchingRule(final double finalThreshold, Comparator<RecordType, SchemaElementType>... comparators) {
+    public MaxMatchingRule(double finalThreshold, final Comparator<RecordType, SchemaElementType>... comparators) {
         super(finalThreshold);
         this.comparators.addAll(Arrays.asList(comparators));
     }
 
     @Override
-    public Correspondence<RecordType, SchemaElementType> apply(final RecordType record1, final RecordType record2, final Processable<Correspondence<SchemaElementType, Matchable>> schemaCorrespondences) {
-        // double similarity = compare(record1, record2, null);
+    public Correspondence<RecordType, SchemaElementType> apply(RecordType record1, RecordType record2, Processable<Correspondence<SchemaElementType, Matchable>> schemaCorrespondences) {
         double max = 0.0;
         Record debug = null;
-        if (this.isDebugReportActive() && this.continueCollectDebugResults()) {
-            debug = initializeDebugRecord(record1, record2, -1);
+        if (isDebugReportActive() && continueCollectDebugResults()) {
+            debug = this.initializeDebugRecord(record1, record2, -1);
         }
 
-        for (int i = 0; i < comparators.size(); i++) {
+        for (int i = 0; i < this.comparators.size(); i++) {
 
-            Comparator<RecordType, SchemaElementType> comp = comparators.get(i);
+            final Comparator<RecordType, SchemaElementType> comp = this.comparators.get(i);
 
-            Correspondence<SchemaElementType, Matchable> correspondence = getCorrespondenceForComparator(
+            final Correspondence<SchemaElementType, Matchable> correspondence = this.getCorrespondenceForComparator(
                     schemaCorrespondences, record1, record2, comp);
 
-            if (this.isDebugReportActive()) {
+            if (isDebugReportActive()) {
                 comp.getComparisonLog().initialise();
             }
 
-            double similarity = comp.compare(record1, record2, correspondence);
+            final double similarity = comp.compare(record1, record2, correspondence);
             if (similarity > max) {
                 max = similarity;
             }
 
-            if (this.isDebugReportActive() && this.continueCollectDebugResults()) {
-                debug = fillDebugRecord(debug, comp, i);
-                addDebugRecordShort(record1, record2, comp, i);
+            if (isDebugReportActive() && continueCollectDebugResults()) {
+                debug = this.fillDebugRecord(debug, comp, i);
+                this.addDebugRecordShort(record1, record2, comp, i);
             }
         }
 
@@ -55,10 +54,10 @@ public class MaxMatchingRule<RecordType extends Matchable, SchemaElementType ext
     }
 
     @Override
-    public double compare(final RecordType record1, final RecordType record2, final Correspondence<SchemaElementType, Matchable> correspondence) {
-        double max = 0d;
-        for (final Comparator<RecordType, SchemaElementType> comparator : comparators) {
-            var sim = comparator.compare(record1, record2, correspondence);
+    public double compare(RecordType record1, RecordType record2, Correspondence<SchemaElementType, Matchable> correspondence) {
+        double max = 0.0d;
+        for (Comparator<RecordType, SchemaElementType> comparator : this.comparators) {
+            final var sim = comparator.compare(record1, record2, correspondence);
             if (sim > max) {
                 max = sim;
             }
@@ -66,7 +65,7 @@ public class MaxMatchingRule<RecordType extends Matchable, SchemaElementType ext
         return max;
     }
 
-    public void addComparator(Comparator<RecordType, SchemaElementType> comparator) {
-        this.comparators.add(comparator);
+    public void addComparator(final Comparator<RecordType, SchemaElementType> comparator) {
+        comparators.add(comparator);
     }
 }

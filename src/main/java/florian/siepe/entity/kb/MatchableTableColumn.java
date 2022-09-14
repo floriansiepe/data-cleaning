@@ -1,6 +1,4 @@
 package florian.siepe.entity.kb;
-import java.io.Serializable;
-import java.util.Map;
 
 import de.uni_mannheim.informatik.dws.winter.model.Fusible;
 import de.uni_mannheim.informatik.dws.winter.model.Matchable;
@@ -8,13 +6,9 @@ import de.uni_mannheim.informatik.dws.winter.preprocessing.datatypes.DataType;
 import de.uni_mannheim.informatik.dws.winter.webtables.TableColumn;
 import de.uni_mannheim.informatik.dws.winter.webtables.TableColumnStatistics;
 
-/**
- *
- * Model of a Web Table column.
- *
- * @author Oliver Lehmberg (oli@dwslab.de)
- *
- */
+import java.io.Serializable;
+import java.util.Map;
+
 public class MatchableTableColumn implements Matchable, Fusible<MatchableTableColumn>, Comparable<MatchableTableColumn>, Serializable {
 
 	private static final long serialVersionUID = 1L;
@@ -26,49 +20,27 @@ public class MatchableTableColumn implements Matchable, Fusible<MatchableTableCo
 	protected TableColumnStatistics statistics;
 	protected Object min, max;
 
-	public int getTableId() {
-		return tableId;
-	}
-	public int getColumnIndex() {
-		return columnIndex;
-	}
-	protected void setColumnIndex(int index) {
-		columnIndex = index;
-	}
-
-	/**
-	 * @return the header
-	 */
-	public String getHeader() {
-		return header;
-	}
-	/**
-	 * @param header the header to set
-	 */
-	public void setHeader(String header) {
+	public MatchableTableColumn(final int tableId, final int columnIndex, final String header, final DataType type) {
+		this.tableId = tableId;
+		this.columnIndex = columnIndex;
+		id = "";
 		this.header = header;
+		this.type = type;
 	}
 
-	/**
-	 * @return TableColumnStatistic the statistics
-	 */
-	public TableColumnStatistics getStatistics() {
-		return statistics;
+	public MatchableTableColumn(final int tableId, final TableColumn c) {
+		this.tableId = tableId;
+		columnIndex = c.getColumnIndex();
+		type = c.getDataType();
+		header = c.getHeader();
+
+		// this controls the schema that we are matching to!
+		// using c.getIdentifier() all dbp properties only exist once! (i.e. we cannot handle "_label" columns and the value of tableId is more or less random
+		id = c.getUniqueName();
 	}
 
-	/**
-	 * @param statistics the statistics to set
-	 */
-	public void setStatistics(TableColumnStatistics statistics) {
-		this.statistics = statistics;
-	}
-
-
-
-	public static final int CSV_LENGTH = 4;
-
-	public static MatchableTableColumn fromCSV(String[] values, Map<String, Integer> tableIndices) {
-		MatchableTableColumn c = new MatchableTableColumn();
+	public static MatchableTableColumn fromCSV(final String[] values, final Map<String, Integer> tableIndices) {
+		final MatchableTableColumn c = new MatchableTableColumn();
 		c.tableId = tableIndices.get(values[0]);
 		c.columnIndex = Integer.parseInt(values[1]);
 		c.type = DataType.valueOf(values[2]);
@@ -76,32 +48,56 @@ public class MatchableTableColumn implements Matchable, Fusible<MatchableTableCo
 		return c;
 	}
 
+	public int getTableId() {
+		return this.tableId;
+	}
+
+	public int getColumnIndex() {
+		return this.columnIndex;
+	}
+
+	protected void setColumnIndex(final int index) {
+		this.columnIndex = index;
+	}
+
+	/**
+	 * @return the header
+	 */
+	public String getHeader() {
+		return this.header;
+	}
+
+
+	public static final int CSV_LENGTH = 4;
+
+	/**
+	 * @param header the header to set
+	 */
+	public void setHeader(final String header) {
+		this.header = header;
+	}
+
 	public MatchableTableColumn() {
 
 	}
 
-	public MatchableTableColumn(int tableId, int columnIndex, String header, DataType type){
-		this.tableId = tableId;
-		this.columnIndex = columnIndex;
-		this.id = "";
-		this.header = header;
-		this.type = type;
+	/**
+	 * @return TableColumnStatistic the statistics
+	 */
+	public TableColumnStatistics getStatistics() {
+		return this.statistics;
 	}
 
-	public MatchableTableColumn(int tableId, TableColumn c) {
-		this.tableId = tableId;
-		this.columnIndex = c.getColumnIndex();
-		this.type = c.getDataType();
-		this.header = c.getHeader();
-
-		// this controls the schema that we are matching to!
-		// using c.getIdentifier() all dbp properties only exist once! (i.e. we cannot handle "_label" columns and the value of tableId is more or less random
-		this.id = c.getUniqueName();
+	/**
+	 * @param statistics the statistics to set
+	 */
+	public void setStatistics(final TableColumnStatistics statistics) {
+		this.statistics = statistics;
 	}
 
 	@Override
 	public String getIdentifier() {
-		return id;
+		return this.id;
 	}
 
 	@Override
@@ -113,13 +109,14 @@ public class MatchableTableColumn implements Matchable, Fusible<MatchableTableCo
 	 * @return the type
 	 */
 	public DataType getType() {
-		return type;
+		return this.type;
 	}
+
 	/* (non-Javadoc)
 	 * @see de.uni_mannheim.informatik.wdi.model.Fusable#hasValue(java.lang.Object)
 	 */
 	@Override
-	public boolean hasValue(MatchableTableColumn attribute) {
+	public boolean hasValue(final MatchableTableColumn attribute) {
 		return false;
 	}
 
@@ -127,24 +124,27 @@ public class MatchableTableColumn implements Matchable, Fusible<MatchableTableCo
 	 * @return the min
 	 */
 	public Object getMin() {
-		return min;
+		return this.min;
 	}
+
+	/**
+	 * @param min the min to set
+	 */
+	public void setMin(final Object min) {
+		this.min = min;
+	}
+
 	/**
 	 * @return the max
 	 */
 	public Object getMax() {
-		return max;
+		return this.max;
 	}
-	/**
-	 * @param min the min to set
-	 */
-	public void setMin(Object min) {
-		this.min = min;
-	}
+
 	/**
 	 * @param max the max to set
 	 */
-	public void setMax(Object max) {
+	public void setMax(final Object max) {
 		this.max = max;
 	}
 
@@ -152,8 +152,8 @@ public class MatchableTableColumn implements Matchable, Fusible<MatchableTableCo
 	 * @see java.lang.Comparable#compareTo(java.lang.Object)
 	 */
 	@Override
-	public int compareTo(MatchableTableColumn o) {
-		return getIdentifier().compareTo(o.getIdentifier());
+	public int compareTo(final MatchableTableColumn o) {
+		return id.compareTo(o.id);
 	}
 
 	/* (non-Javadoc)
@@ -161,17 +161,17 @@ public class MatchableTableColumn implements Matchable, Fusible<MatchableTableCo
 	 */
 	@Override
 	public int hashCode() {
-		return getIdentifier().hashCode();
+		return id.hashCode();
 	}
 
 	/* (non-Javadoc)
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
 	@Override
-	public boolean equals(Object obj) {
-		if(obj instanceof MatchableTableColumn) {
-			MatchableTableColumn col = (MatchableTableColumn)obj;
-			return getIdentifier().equals(col.getIdentifier());
+	public boolean equals(final Object obj) {
+		if (obj instanceof MatchableTableColumn) {
+			final MatchableTableColumn col = (MatchableTableColumn) obj;
+			return id.equals(col.id);
 		} else {
 			return super.equals(obj);
 		}
@@ -182,7 +182,7 @@ public class MatchableTableColumn implements Matchable, Fusible<MatchableTableCo
 	 */
 	@Override
 	public String toString() {
-		return String.format("{#%d}[%d]%s", getTableId(), getColumnIndex(), getHeader());
+		return String.format("{#%d}[%d]%s", tableId, columnIndex, header);
 	}
 
 }

@@ -1,10 +1,10 @@
 package florian.siepe.matcher;
 
-import de.uni_mannheim.informatik.dws.winter.model.*;
+import de.uni_mannheim.informatik.dws.winter.model.Correspondence;
+import de.uni_mannheim.informatik.dws.winter.model.HashedDataSet;
+import de.uni_mannheim.informatik.dws.winter.processing.Function;
 import de.uni_mannheim.informatik.dws.winter.processing.Processable;
 import de.uni_mannheim.informatik.dws.winter.processing.ProcessableCollection;
-import de.uni_mannheim.informatik.dws.winter.similarity.string.JaccardOnNGramsSimilarity;
-import de.uni_mannheim.informatik.dws.winter.similarity.string.LevenshteinSimilarity;
 import florian.siepe.blocker.LocalitySensitiveHashingBlockingKeyGenerator;
 import florian.siepe.blocker.TransformerBlocker;
 import florian.siepe.blocker.TransformerRestClient;
@@ -14,9 +14,7 @@ import florian.siepe.control.io.KnowledgeIndex;
 import florian.siepe.entity.kb.MatchableTableColumn;
 import florian.siepe.entity.kb.MatchableTableRow;
 import florian.siepe.entity.kb.WebTables;
-import florian.siepe.measures.MaxStringSimilarityMeasure;
 import florian.siepe.measures.RowSimilarity;
-import florian.siepe.measures.WebStringNormalizingSimilarity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +26,7 @@ import static java.util.stream.Collectors.groupingBy;
 /*
 Currently not working properly
  */
-public class InstanceMatcher  {
+public class InstanceMatcher {
     private static final Logger logger = LoggerFactory.getLogger(InstanceMatcher.class);
     private final KnowledgeIndex index;
     private final WebTables webTables;
@@ -36,29 +34,45 @@ public class InstanceMatcher  {
     private final TransformerBlocker transformerBlocker;
     private final SampleExtractor sampleExtractor;
 
-    public InstanceMatcher(KnowledgeIndex index, WebTables webTables, TransformerRestClient transformerRestClient) {
+    public InstanceMatcher(final KnowledgeIndex index, final WebTables webTables, final TransformerRestClient transformerRestClient) {
         this.index = index;
         this.webTables = webTables;
-        this.valueExtractor = new ValueExtractor(index, webTables);
-        this.transformerBlocker = new TransformerBlocker(transformerRestClient, index, webTables);
-        sampleExtractor = new SampleExtractor();
+        valueExtractor = new ValueExtractor(index, webTables);
+        transformerBlocker = new TransformerBlocker(transformerRestClient, index, webTables);
+        this.sampleExtractor = new SampleExtractor();
+    }
+
+    private static Map<Integer, List<MatchableTableRow>> generateBlocks(List<MatchableTableRow> records, LocalitySensitiveHashingBlockingKeyGenerator localitySensitiveHashingBlockingKeyGenerator) {
+        return records
+                .stream()
+                .flatMap(record -> localitySensitiveHashingBlockingKeyGenerator.getKeys(record).map(blockId -> new AbstractMap.SimpleEntry<>(blockId, record)))
+                .collect(groupingBy(AbstractMap.SimpleEntry::getKey))
+                .entrySet()
+                .stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream().map(AbstractMap.SimpleEntry::getValue).collect(Collectors.toList())));
+    }
+
+    private static Map<Integer, List<MatchableTableRow>> generateBlock(List<MatchableTableRow> records, LocalitySensitiveHashingBlockingKeyGenerator localitySensitiveHashingBlockingKeyGenerator) {
+        return records
+                .stream()
+                .collect(groupingBy(localitySensitiveHashingBlockingKeyGenerator::getKey));
     }
 
     public Map<Integer, Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>>> runMatching() {
-        final var correspondences = new HashMap<Integer, Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>>>();
-        final var webTableColumnsByTableId = webTables.getSchema().get().stream().collect(groupingBy(MatchableTableColumn::getTableId));
+        var correspondences = new HashMap<Integer, Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>>>();
+        var webTableColumnsByTableId = this.webTables.getSchema().get().stream().collect(groupingBy(MatchableTableColumn::getTableId));
 
-        for (final var entry : webTableColumnsByTableId.entrySet()) {
-            final var tableCorrespondences = new ProcessableCollection<Correspondence<MatchableTableColumn, MatchableTableColumn>>();
-            final var webTableId = entry.getKey();
-            final var webTableColumns = entry.getValue();
-            final var blockedCandidates = transformerBlocker.generateCandidates(webTableColumns);
-            for (final var blockedPair : blockedCandidates.entrySet()) {
-                final var webColumn = blockedPair.getKey();
-                final var blockedIndexColumns = blockedPair.getValue();
+        for (var entry : webTableColumnsByTableId.entrySet()) {
+            var tableCorrespondences = new ProcessableCollection<Correspondence<MatchableTableColumn, MatchableTableColumn>>();
+            var webTableId = entry.getKey();
+            var webTableColumns = entry.getValue();
+            var blockedCandidates = this.transformerBlocker.generateCandidates(webTableColumns);
+            for (var blockedPair : blockedCandidates.entrySet()) {
+                var webColumn = blockedPair.getKey();
+                var blockedIndexColumns = blockedPair.getValue();
 
-                final var correspondence = runMatching(blockedIndexColumns, webColumn);
-                if (correspondence != null) {
+                var correspondence = this.runMatching(blockedIndexColumns, webColumn);
+                if (null != correspondence) {
                     tableCorrespondences.add(correspondence);
                 }
             }
@@ -74,16 +88,15 @@ public class InstanceMatcher  {
 
     }
 
-
-    private Correspondence<MatchableTableColumn, MatchableTableColumn> runMatching(final Collection<MatchableTableColumn> indexColumns, final MatchableTableColumn webTableColumn) {
-        logger.info("Run matching for {} with {} blocking candidates", webTableColumn.toString(), indexColumns.size());
+    private Correspondence<MatchableTableColumn, MatchableTableColumn> runMatching(Collection<MatchableTableColumn> indexColumns, MatchableTableColumn webTableColumn) {
+        InstanceMatcher.logger.info("Run matching for {} with {} blocking candidates", webTableColumn.toString(), indexColumns.size());
         Correspondence<MatchableTableColumn, MatchableTableColumn> bestCorrespondence = null;
 
-        for (final MatchableTableColumn indexColumn : indexColumns) {
+        for (MatchableTableColumn indexColumn : indexColumns) {
             // Do a quick null check since this can happen
-            if (indexColumn != null && webTableColumn != null && indexColumn.getType().equals(webTableColumn.getType())) {
-                final var matching = runMatching(indexColumn, webTableColumn);
-                if (bestCorrespondence == null) {
+            if (null != indexColumn && null != webTableColumn && indexColumn.getType() == webTableColumn.getType()) {
+                var matching = this.runMatching(indexColumn, webTableColumn);
+                if (null == bestCorrespondence) {
                     bestCorrespondence = matching;
                 }
                 if (bestCorrespondence.getSimilarityScore() < matching.getSimilarityScore()) {
@@ -94,157 +107,154 @@ public class InstanceMatcher  {
         return bestCorrespondence;
     }
 
-    private Correspondence<MatchableTableColumn, MatchableTableColumn> runMatching(MatchableTableColumn indexColumn, MatchableTableColumn webColumn) {
-        logger.debug("Start Matching");
-        if (!indexColumn.getType().equals(webColumn.getType())) {
+    private Correspondence<MatchableTableColumn, MatchableTableColumn> runMatching(final MatchableTableColumn indexColumn, final MatchableTableColumn webColumn) {
+        InstanceMatcher.logger.debug("Start Matching");
+        if (indexColumn.getType() != webColumn.getType()) {
             throw new RuntimeException("Data types are not matching: " + indexColumn.getType() + " and " + webColumn.getType());
         }
 
-         List<MatchableTableRow> firstRecords = new ArrayList<>(valueExtractor.findIndexRecords(indexColumn));
-         List<MatchableTableRow> secondRecords =new ArrayList<>(valueExtractor.findWebRecords(webColumn));
+        List<MatchableTableRow> firstRecords = new ArrayList<>(this.valueExtractor.findIndexRecords(indexColumn));
+        final List<MatchableTableRow> secondRecords = new ArrayList<>(this.valueExtractor.findWebRecords(webColumn));
 
-        if (firstRecords.size() > Math.pow(secondRecords.size(), 2) || firstRecords.size() > 5000) {
+        if (firstRecords.size() > Math.pow(secondRecords.size(), 2) || 5000 < firstRecords.size()) {
             // Record size is totally unbalanced. Hashing might take too long
-            final int maxRecords = Math.min((int) Math.pow(secondRecords.size(), 2), 5000);
-            firstRecords = sampleExtractor.extractValue(maxRecords, firstRecords, t -> t);
+            int maxRecords = Math.min((int) Math.pow(secondRecords.size(), 2), 5000);
+            firstRecords = this.sampleExtractor.extractValue(maxRecords, firstRecords, t -> t);
         }
 
-        logger.debug("Finished values extraction");
-        final var firstDataSet = new HashedDataSet<MatchableTableRow, MatchableTableColumn>(firstRecords);
+        InstanceMatcher.logger.debug("Finished values extraction");
+        var firstDataSet = new HashedDataSet<MatchableTableRow, MatchableTableColumn>(firstRecords);
         firstDataSet.addAttribute(indexColumn);
-        final var secondDataSet = new HashedDataSet<MatchableTableRow, MatchableTableColumn>(secondRecords);
+        var secondDataSet = new HashedDataSet<MatchableTableRow, MatchableTableColumn>(secondRecords);
         secondDataSet.addAttribute(webColumn);
 
-        logger.debug("Instance matching dataset sizes: {}, {}", firstDataSet.size(), secondDataSet.size());
-        final var firstColumnIndex = indexColumn.getColumnIndex();
-        final var secondColumnIndex = webColumn.getColumnIndex();
+        InstanceMatcher.logger.debug("Instance matching dataset sizes: {}, {}", firstDataSet.size(), secondDataSet.size());
 
-        logger.debug("Start hashing");
-        final var localitySensitiveHashingBlockingKeyGenerator = new LocalitySensitiveHashingBlockingKeyGenerator(webTables, index, new HashSet<>(firstRecords), new HashSet<>(secondRecords), firstColumnIndex, secondColumnIndex);
+        // FINALLY I GOT ALL VALUES!!!!!
 
-        final var bucketsFirst = generateBlocks(firstRecords, localitySensitiveHashingBlockingKeyGenerator);
-        final var bucketsSecond = generateBlocks(secondRecords, localitySensitiveHashingBlockingKeyGenerator);
+        final var indexValues = this.index.findColumnValues(indexColumn.getIdentifier());
+        final var webtableValues = secondRecords.stream().map(rec -> rec.get(webColumn.getColumnIndex())).collect(Collectors.toList());
+
+        MatchableTableColumn indexAttribute = this.index.findColumn(indexColumn.getIdentifier()).stream().findFirst().orElse(null);
+        if (null == indexAttribute) {
+            throw new RuntimeException("Could not find index attribute");
+        }
+
+        final Function<Object, MatchableTableRow> indexProvider = (rec) -> rec.get(rec.getPropertyUriToColumnIndex().get(indexAttribute.getIdentifier()));
+        final Function<Object, MatchableTableRow> webProvider = (rec) -> rec.get(webColumn.getColumnIndex());
+
+        InstanceMatcher.logger.debug("Start hashing");
+        var localitySensitiveHashingBlockingKeyGenerator = new LocalitySensitiveHashingBlockingKeyGenerator(new HashSet<>(firstRecords), new HashSet<>(secondRecords), indexProvider, webProvider);
+
+        var bucketsFirst = InstanceMatcher.generateBlocks(firstRecords, localitySensitiveHashingBlockingKeyGenerator);
+        var bucketsSecond = InstanceMatcher.generateBlocks(secondRecords, localitySensitiveHashingBlockingKeyGenerator);
         bucketsFirst.remove(-1);
         bucketsSecond.remove(-1);
-        logger.debug("Finished hashing");
+        InstanceMatcher.logger.debug("Finished hashing");
 
-        /*var tfidfSim = new TFIDFCosineSimilarity<MatchableTableRow, MatchableTableColumn, MatchableTableColumn>(firstDataSet, secondDataSet, new TokenGenerator<MatchableTableRow, MatchableTableColumn>() {
-            Map<MatchableTableRow, String[]> tokenMap = new HashMap<>();
-            public void TFIDFCosineSimilarity() {
-                preComputeTokens(firstDataSet, firstColumnIndex);
-                preComputeTokens(secondDataSet, secondColumnIndex);
-            }
 
-            private void preComputeTokens(DataSet<MatchableTableRow, MatchableTableColumn> dataSet, int index) {
-                dataSet.foreach(row -> tokenMap.put(row, tokenizeString(String.valueOf(row.get(index)))));
-            }
-
-            @Override
-            public void generateTokens(final MatchableTableRow record, final Processable<Correspondence<MatchableTableColumn, Matchable>> correspondences, final DataIterator<Pair<String, MatchableTableRow>> resultCollector) {
-                if (!tokenMap.containsKey(record)) {
-                    return;
-                }
-                String[] tokens = tokenMap.get(record);
-
-                for (String token : tokens) {
-                    resultCollector.next(new Pair<>(token, record));
-                }
-            }
-
-            @Override
-            public String[] tokenizeString(final String value) {
-                return value.split(" ");
-            }
-        });*/
-
-        //final var similarityMeasure = new WebStringNormalizingSimilarity(new MaxStringSimilarityMeasure(new LevenshteinSimilarity(), new JaccardOnNGramsSimilarity(2)));
-        final var similarityMeasure = new RowSimilarity(firstColumnIndex, secondColumnIndex, indexColumn.getType());
+        var similarityMeasure = new RowSimilarity(indexProvider, webProvider, indexColumn.getType());
         double blockSimilaritySum = 0;
         int blockCount = 0;
 
-        for (final Map.Entry<Integer, List<MatchableTableRow>> bucketFirst : bucketsFirst.entrySet()) {
+        for (Map.Entry<Integer, List<MatchableTableRow>> bucketFirst : bucketsFirst.entrySet()) {
             if (bucketFirst.getValue().isEmpty()) {
                 continue;
             }
-            final var bucketSecond = bucketsSecond.get(bucketFirst.getKey());
+            var bucketSecond = bucketsSecond.get(bucketFirst.getKey());
 
-            if (bucketSecond == null || bucketSecond.isEmpty()) {
+            if (null == bucketSecond || bucketSecond.isEmpty()) {
                 continue;
             }
 
-            var similarities = new double[bucketSecond.size()][bucketFirst.getValue().size()];
+            final var similarities = new double[bucketSecond.size()][bucketFirst.getValue().size()];
 
             for (int i = 0; i < bucketSecond.size(); i++) {
-                var rowSecond = bucketSecond.get(i);
+                final var rowSecond = bucketSecond.get(i);
 
                 for (int j = 0; j < bucketFirst.getValue().size(); j++) {
-                   var rowFirst = bucketFirst.getValue().get(j);
+                    final var rowFirst = bucketFirst.getValue().get(j);
                     try {
-                        /*final String first = rowFirst.get(firstColumnIndex).toString();
-                        final String second = rowSecond.get(secondColumnIndex).toString();*/
-                        final var sim = similarityMeasure.calculate(rowFirst, rowSecond);
+                        var sim = similarityMeasure.calculate(rowFirst, rowSecond);
                         similarities[i][j] = sim;
-                    } catch (NullPointerException e) {
-                        logger.debug("Got a null value while trying to fetch value: {}", e.getMessage());
+                        if (0.6 < sim) {
+                            InstanceMatcher.logger.debug("Similarity: {} between {} and {}", sim, indexProvider.execute(rowFirst), webProvider.execute(rowSecond));
+                        }
+                    } catch (final NullPointerException e) {
+                        InstanceMatcher.logger.debug("Got a null value while trying to fetch value: {}", e.getMessage());
                     }
                 }
             }
 
-            final double blockSimilarity = computeBlockSimilarity(similarities);
-            blockSimilaritySum += blockSimilarity;
-            blockCount++;
+            //final double blockSimilarity = computeBlockSimilarity(similarities);
+            double blockSimilarity = this.computeBlockSimilarityMax(similarities);
+            if (0.2 < blockSimilarity) {
+                blockSimilaritySum += blockSimilarity;
+                blockCount++;
+            }
         }
-        double averageSimilarity = blockSimilaritySum / blockCount;
+        final double averageSimilarity = blockSimilaritySum / blockCount;
 
-        if (averageSimilarity > 0.5d) {
-            logger.warn("Match: {} {} <-> {}", averageSimilarity, indexColumn, webColumn);
+        if (0.5d < averageSimilarity) {
+            InstanceMatcher.logger.debug("Match: {} {} <-> {}", averageSimilarity, indexColumn, webColumn);
         }
         return new Correspondence<>(indexColumn, webColumn, averageSimilarity);
     }
 
-    private static Map<Integer, List<MatchableTableRow>> generateBlocks(final List<MatchableTableRow> records, final LocalitySensitiveHashingBlockingKeyGenerator localitySensitiveHashingBlockingKeyGenerator) {
-        return  records
-                .stream()
-                .flatMap(record -> localitySensitiveHashingBlockingKeyGenerator.getKeys(record).map(blockId -> new AbstractMap.SimpleEntry<>(blockId, record)))
-                .collect(groupingBy(AbstractMap.SimpleEntry::getKey))
-                .entrySet()
-                .stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream().map(AbstractMap.SimpleEntry::getValue).collect(Collectors.toList())));
+    private double computeBlockSimilarityMax(double[][] similarities) {
+        double max = 0;
+        for (double[] similarity : similarities) {
+            for (double v : similarity) {
+                if (v > max) {
+                    max = v;
+                }
+            }
+        }
+        return max;
     }
 
-    private double computeBlockSimilarity(final double[][] similarities) {
+    private double computeBlockSimilarity(double[][] similarities) {
         // Formula is from https://dbs.uni-leipzig.de/file/BTW-Workshop_2007_EngmannMassmann.pdf 2.3 Content-based Matching
-        int frameHeight = similarities.length;
-        if (frameHeight == 0) {
+        final int frameHeight = similarities.length;
+        if (0 == frameHeight) {
             return 0;
         }
-        int frameWidth = similarities[0].length;
-
+        final int frameWidth = similarities[0].length;
+        // Framecorrection is used when the sim function emitted -1 e.g. for null values
+        int frameCorrection = 0;
         double maxLeftSide = 0;
         double maxRightSide = 0;
 
         for (int i = 0; i < frameHeight; i++) {
             double maxI = 0;
             for (int j = 0; j < frameWidth; j++) {
-               if (maxI < similarities[i][j]) {
-                   maxI = similarities[i][j];
-               }
+                double sim = similarities[i][j];
+                if (-1.0 == sim) {
+                    frameCorrection++;
+                }
+                if (maxI < sim) {
+                    maxI = sim;
+                }
             }
-            maxLeftSide+=maxI;
+            maxLeftSide += maxI;
         }
 
         for (int j = 0; j < frameWidth; j++) {
             double maxJ = 0;
             for (int i = 0; i < frameHeight; i++) {
-                if (maxJ < similarities[i][j]) {
-                    maxJ = similarities[i][j];
+                double sim = similarities[i][j];
+                if (-1.0 == sim) {
+                    frameCorrection++;
+                }
+                if (maxJ < sim) {
+                    maxJ = sim;
                 }
             }
             maxRightSide += maxJ;
 
         }
-        logger.debug("{} {}", maxLeftSide, maxRightSide);
-        return (maxLeftSide + maxRightSide) / (frameWidth + frameHeight);
+        InstanceMatcher.logger.debug("{} {}", maxLeftSide, maxRightSide);
+        return (maxLeftSide + maxRightSide) / (frameWidth + frameHeight - frameCorrection);
     }
 
 

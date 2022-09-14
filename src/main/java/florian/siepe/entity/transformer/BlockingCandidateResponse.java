@@ -5,10 +5,10 @@ public class BlockingCandidateResponse {
     public Double prob;
 
     public String getKey() {
-        return key;
+        return this.key;
     }
 
     public Double getProb() {
-        return prob;
+        return this.prob;
     }
 }

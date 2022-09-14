@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 
 public class SampleExtractor {
 
-    public <T, R> List<R> extractValue(int k, List<T> values, Function<T, R> valueMapper) {
+    public <T, R> List<R> extractValue(final int k, final List<T> values, final Function<T, R> valueMapper) {
         if (k >= values.size()) {
             return values
                     .stream()
@@ -21,21 +21,21 @@ public class SampleExtractor {
                     .collect(Collectors.toList());
         }
 
-        final var extractedValues = new ArrayList<R>(k);
-        double pickRatio = (double) values.size() / k;
+        var extractedValues = new ArrayList<R>(k);
+        final double pickRatio = (double) values.size() / k;
         for (int i = 0; i < k; i++) {
-            int index = (int) (i * pickRatio);
+            final int index = (int) (i * pickRatio);
             extractedValues.add(valueMapper.apply(values.get(index)));
         }
 
         return extractedValues;
     }
 
-    public List<String> extractValue(MatchableTableColumn column, int k, List<MatchableTableRow> values) {
-        return extractValue(k, values, matchableTableRow -> {
+    public List<String> extractValue(final MatchableTableColumn column, final int k, final List<MatchableTableRow> values) {
+        return this.extractValue(k, values, matchableTableRow -> {
             try {
                 return String.valueOf(matchableTableRow.get(column.getColumnIndex()));
-            } catch (IndexOutOfBoundsException e) {
+            } catch (final IndexOutOfBoundsException e) {
                 // This can happen if a row is corrupted. Ignore value
                 return null;
             }

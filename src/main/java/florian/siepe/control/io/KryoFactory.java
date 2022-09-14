@@ -3,9 +3,6 @@ package florian.siepe.control.io;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Serializer;
 import com.esotericsoftware.kryo.serializers.DefaultSerializers;
-import com.esotericsoftware.kryo.serializers.DefaultSerializers.DateSerializer;
-import com.esotericsoftware.kryo.serializers.DefaultSerializers.EnumSetSerializer;
-import com.esotericsoftware.kryo.serializers.DefaultSerializers.TimeZoneSerializer;
 import com.esotericsoftware.kryo.serializers.EnumMapSerializer;
 import com.esotericsoftware.kryo.serializers.JavaSerializer;
 import de.javakaffee.kryoserializers.*;
@@ -17,15 +14,17 @@ import java.net.URI;
 import java.util.*;
 import java.util.regex.Pattern;
 
-public class KryoFactory {
+public enum KryoFactory {
+    ;
+
     public static Kryo createKryoInstance() {
-        var kryo = new KryoReflectionFactorySupport() {
+        final var kryo = new KryoReflectionFactorySupport() {
 
             @Override
             @SuppressWarnings({"rawtypes", "unchecked"})
-            public Serializer<?> getDefaultSerializer(final Class type) {
+            public Serializer<?> getDefaultSerializer(Class type) {
                 if (EnumSet.class.isAssignableFrom(type)) {
-                    return new EnumSetSerializer();
+                    return new DefaultSerializers.EnumSetSerializer();
                 }
                 if (EnumMap.class.isAssignableFrom(type)) {
                     return new EnumMapSerializer(type);
@@ -37,10 +36,10 @@ public class KryoFactory {
                     return new CopyForIterateMapSerializer();
                 }
                 if (Date.class.isAssignableFrom(type)) {
-                    return new DateSerializer();
+                    return new DefaultSerializers.DateSerializer();
                 }
                 if (TimeZone.class.isAssignableFrom(type)) {
-                    return new TimeZoneSerializer();
+                    return new DefaultSerializers.TimeZoneSerializer();
                 }
                 return super.getDefaultSerializer(type);
             }
@@ -48,9 +47,9 @@ public class KryoFactory {
         kryo.setRegistrationRequired(false);
         kryo.setReferences(true);
         kryo.register(List.of("").getClass(), new DefaultSerializers.ArraysAsListSerializer());
-        kryo.register(Collections.EMPTY_LIST.getClass(), new DefaultSerializers.CollectionsEmptyListSerializer());
-        kryo.register(Collections.EMPTY_MAP.getClass(), new DefaultSerializers.CollectionsEmptyMapSerializer());
-        kryo.register(Collections.EMPTY_SET.getClass(), new DefaultSerializers.CollectionsEmptySetSerializer());
+        kryo.register(Collections.emptyList().getClass(), new DefaultSerializers.CollectionsEmptyListSerializer());
+        kryo.register(Collections.emptyMap().getClass(), new DefaultSerializers.CollectionsEmptyMapSerializer());
+        kryo.register(Collections.emptySet().getClass(), new DefaultSerializers.CollectionsEmptySetSerializer());
         kryo.register(Collections.singletonList("").getClass(), new DefaultSerializers.CollectionsSingletonListSerializer());
         kryo.register(Collections.singleton("").getClass(), new DefaultSerializers.CollectionsSingletonSetSerializer());
         kryo.register(Collections.singletonMap("", "").getClass(), new DefaultSerializers.CollectionsSingletonMapSerializer());
@@ -65,7 +64,6 @@ public class KryoFactory {
         kryo.register(KnowledgeBase.class);
         kryo.register(KnowledgeIndex.class);
         kryo.register(com.google.common.collect.HashBiMap.class, new JavaSerializer());
-        // kryo.register(HashBiMap.class, new MapSerializer<HashBiMap<?,?>>());
         UnmodifiableCollectionsSerializer.registerSerializers(kryo);
         SynchronizedCollectionsSerializer.registerSerializers(kryo);
         return kryo;

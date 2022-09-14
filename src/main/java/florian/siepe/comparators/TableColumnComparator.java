@@ -11,18 +11,18 @@ public class TableColumnComparator implements Comparator<MatchableTableColumn, M
     private final SimilarityMeasure<String> similarity;
     private ComparatorLogger comparisonLog;
 
-    public TableColumnComparator(final SimilarityMeasure<String> similarity) {
+    public TableColumnComparator(SimilarityMeasure<String> similarity) {
         this.similarity = similarity;
     }
 
     @Override
-    public double compare(final MatchableTableColumn record1, final MatchableTableColumn record2, final Correspondence<MatchableTableColumn, Matchable> correspondence) {
-        double sim = this.similarity.calculate(record1.getHeader(), record2.getHeader());
-        if (this.comparisonLog != null) {
-            this.comparisonLog.setComparatorName(this.getClass().getName());
-            this.comparisonLog.setRecord1Value(record1.getHeader());
-            this.comparisonLog.setRecord2Value(record2.getHeader());
-            this.comparisonLog.setSimilarity(Double.toString(sim));
+    public double compare(MatchableTableColumn record1, MatchableTableColumn record2, Correspondence<MatchableTableColumn, Matchable> correspondence) {
+        final double sim = similarity.calculate(record1.getHeader(), record2.getHeader());
+        if (null != this.comparisonLog) {
+            comparisonLog.setComparatorName(getClass().getName());
+            comparisonLog.setRecord1Value(record1.getHeader());
+            comparisonLog.setRecord2Value(record2.getHeader());
+            comparisonLog.setSimilarity(Double.toString(sim));
         }
 
         return sim;
@@ -30,7 +30,7 @@ public class TableColumnComparator implements Comparator<MatchableTableColumn, M
 
 
     @Override
-    public void setComparisonLog(final ComparatorLogger comparisonLog) {
+    public void setComparisonLog(ComparatorLogger comparisonLog) {
         this.comparisonLog = comparisonLog;
     }
 }

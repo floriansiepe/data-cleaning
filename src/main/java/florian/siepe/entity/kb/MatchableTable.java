@@ -17,11 +17,6 @@ package florian.siepe.entity.kb;
 
 import de.uni_mannheim.informatik.dws.winter.model.Matchable;
 
-/**
- * Model of a Web Table
- *
- * @author Oliver Lehmberg (oli@dwslab.de)
- */
 public class MatchableTable implements Matchable {
 
     private int id;
@@ -30,7 +25,7 @@ public class MatchableTable implements Matchable {
     protected MatchableTable() {
     } // constructor for deserialisation
 
-    public MatchableTable(int id, String path) {
+    public MatchableTable(final int id, final String path) {
         this.id = id;
         this.path = path;
     }
@@ -39,14 +34,14 @@ public class MatchableTable implements Matchable {
      * @return the id
      */
     public int getId() {
-        return id;
+        return this.id;
     }
 
     /**
      * @return the path
      */
     public String getPath() {
-        return path;
+        return this.path;
     }
 
     /* (non-Javadoc)
@@ -54,7 +49,7 @@ public class MatchableTable implements Matchable {
      */
     @Override
     public String getIdentifier() {
-        return path;
+        return this.path;
     }
 
     /* (non-Javadoc)

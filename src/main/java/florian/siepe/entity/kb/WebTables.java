@@ -28,11 +28,6 @@ import java.util.Map;
 
 import static florian.siepe.utils.FileUtil.findFiles;
 
-/**
- * Model of the Web Tables corpus that is matched.
- *
- * @author Oliver Lehmberg (oli@dwslab.de)
- */
 public class WebTables implements Serializable {
     private static final Logger logger = LoggerFactory.getLogger(WebTables.class);
 
@@ -57,37 +52,37 @@ public class WebTables implements Serializable {
     // lookup for tables by id
     private HashMap<Integer, Table> tablesById = new HashMap<>();
     // detect entity label columns, even if they are set in the file
-    private boolean forceDetectKeys = false;
+    private boolean forceDetectKeys;
     private boolean convertValues = true;
 
-    public static void setDoSerialise(boolean serialise) {
-        doSerialise = serialise;
+    public static void setDoSerialise(final boolean serialise) {
+        WebTables.doSerialise = serialise;
     }
 
-    public static WebTables loadWebTables(List<File> webTables, boolean keepTablesInMemory, boolean convertValues, boolean forceDetectKeys) {
+    public static WebTables loadWebTables(final List<File> webTables, final boolean keepTablesInMemory, final boolean convertValues, final boolean forceDetectKeys) {
         if (webTables.isEmpty()) {
-            logger.warn("No webtables found");
+            WebTables.logger.warn("No webtables found");
             return new WebTables();
         }
 
-        final var tables = findFiles(webTables);
+        var tables = findFiles(webTables);
 
-        WebTables web = new WebTables();
+        final WebTables web = new WebTables();
         web.setKeepTablesInMemory(keepTablesInMemory);
-        web.setConvertValues(convertValues);
-        web.setForceDetectKeys(forceDetectKeys);
+        web.convertValues = convertValues;
+        web.forceDetectKeys = forceDetectKeys;
         web.load(tables);
 
         return web;
     }
 
-    public static WebTables deserialise(File location) {
-        try (final var input = new Input(new FileInputStream(location))) {
-            logger.info("Deserializing Web Tables");
-            Kryo kryo = KryoFactory.createKryoInstance();
+    public static WebTables deserialise(final File location) {
+        try (var input = new Input(new FileInputStream(location))) {
+            WebTables.logger.info("Deserializing Web Tables");
+            final Kryo kryo = KryoFactory.createKryoInstance();
             return kryo.readObject(input, WebTables.class);
 
-        } catch (FileNotFoundException e) {
+        } catch (final FileNotFoundException e) {
             throw new RuntimeException(e);
         }
 
@@ -96,35 +91,35 @@ public class WebTables implements Serializable {
     /**
      * @param forceDetectKeys the forceDetectKeys to set
      */
-    public void setForceDetectKeys(boolean forceDetectKeys) {
+    public void setForceDetectKeys(final boolean forceDetectKeys) {
         this.forceDetectKeys = forceDetectKeys;
     }
 
-    public void setKeepTablesInMemory(boolean keep) {
+    public void setKeepTablesInMemory(final boolean keep) {
         if (keep) {
-            tablesById = new HashMap<>();
+            this.tablesById = new HashMap<>();
         } else {
-            tablesById = null;
+            this.tablesById = null;
         }
     }
 
     /**
      * @param convertValues the convertValues to set
      */
-    public void setConvertValues(boolean convertValues) {
+    public void setConvertValues(final boolean convertValues) {
         this.convertValues = convertValues;
     }
 
-    public void load(List<File> webFiles) {
-        CsvTableParser csvParser = new CsvTableParser();
-        JsonTableParser jsonParser = new JsonTableParser();
+    public void load(final List<File> webFiles) {
+        final CsvTableParser csvParser = new CsvTableParser();
+        final JsonTableParser jsonParser = new JsonTableParser();
 
-        jsonParser.setConvertValues(convertValues);
+        jsonParser.setConvertValues(this.convertValues);
 
-        ProgressReporter progress = new ProgressReporter(webFiles.size(), "Loading Web Tables");
+        final ProgressReporter progress = new ProgressReporter(webFiles.size(), "Loading Web Tables");
 
         int tblIdx = 0;
-        for (File f : webFiles) {
+        for (final File f : webFiles) {
             try {
                 Table web = null;
 
@@ -133,57 +128,57 @@ public class WebTables implements Serializable {
                 } else if (f.getName().endsWith("json")) {
                     web = jsonParser.parseTable(f);
                 } else {
-                    System.out.println(String.format("Unknown table format: %s", f.getName()));
+                    System.out.printf("Unknown table format: %s%n", f.getName());
                 }
 
-                if (web == null) {
+                if (null == web) {
                     continue;
                 }
 
-                if (forceDetectKeys) {
+                if (this.forceDetectKeys) {
                     web.identifySubjectColumn();
                 }
 
-                if (tablesById != null) {
-                    tablesById.put(tblIdx, web);
+                if (null != tablesById) {
+                    this.tablesById.put(tblIdx, web);
                     web.setTableId(tblIdx);
                 }
 
-                MatchableTable mt = new MatchableTable(tblIdx, web.getPath());
-                tables.add(mt);
+                final MatchableTable mt = new MatchableTable(tblIdx, web.getPath());
+                this.tables.add(mt);
 
-                if (webFiles.size() == 1) {
-                    printTableReport(web);
+                if (1 == webFiles.size()) {
+                    this.printTableReport(web);
                 }
 
-                tableIndices.put(web.getPath(), tblIdx);
-                tableNames.put(tblIdx, web.getPath());
+                this.tableIndices.put(web.getPath(), tblIdx);
+                this.tableNames.put(tblIdx, web.getPath());
                 String url = "";
-                if (web.getContext() != null) {
+                if (null != web.getContext()) {
                     url = web.getContext().getUrl();
                 }
-                tableURLs.put(tblIdx, url);
+                this.tableURLs.put(tblIdx, url);
 
                 // list records
-                for (TableRow r : web.getRows()) {
-                    MatchableTableRow row = new MatchableTableRow(r, tblIdx);
-                    records.add(row);
+                for (final TableRow r : web.getRows()) {
+                    final MatchableTableRow row = new MatchableTableRow(r, tblIdx);
+                    this.records.add(row);
                 }
                 // list schema
-                for (TableColumn c : web.getSchema().getRecords()) {
-                    MatchableTableColumn mc = new MatchableTableColumn(tblIdx, c);
-                    schema.add(mc);
-                    columnHeaders.put(mc.getIdentifier(), c.getHeader());
-                    if (c.getDataType() == DataType.numeric) {
+                for (final TableColumn c : web.getSchema().getRecords()) {
+                    final MatchableTableColumn mc = new MatchableTableColumn(tblIdx, c);
+                    this.schema.add(mc);
+                    this.columnHeaders.put(mc.getIdentifier(), c.getHeader());
+                    if (DataType.numeric == c.getDataType()) {
                         mc.setStatistics(c.calculateColumnStatistics());
-                    } else if (c.getDataType() == DataType.date) {
-                        for (TableRow row : web.getRows()) {
-                            LocalDateTime value = (LocalDateTime) row.get(c.getColumnIndex());
-                            if (value != null) {
-                                if (mc.getMax() == null || value.compareTo((LocalDateTime) mc.getMax()) > 0) {
+                    } else if (DataType.date == c.getDataType()) {
+                        for (final TableRow row : web.getRows()) {
+                            final LocalDateTime value = (LocalDateTime) row.get(c.getColumnIndex());
+                            if (null != value) {
+                                if (null == mc.getMax() || 0 < value.compareTo((LocalDateTime) mc.getMax())) {
                                     mc.setMax(value);
                                 }
-                                if (mc.getMin() == null || value.compareTo((LocalDateTime) mc.getMin()) < 0) {
+                                if (null == mc.getMin() || 0 > value.compareTo((LocalDateTime) mc.getMin())) {
                                     mc.setMin(value);
                                 }
                             }
@@ -191,12 +186,12 @@ public class WebTables implements Serializable {
                     }
                     if (web.hasSubjectColumn() && web.getSubjectColumnIndex() == c.getColumnIndex()) {
                         //keys.put(mc.getTableId(), mc);
-                        keyIndices.put(tblIdx, c.getColumnIndex());
-                        keys.add(new Pair<Integer, MatchableTableColumn>(mc.getTableId(), mc));
+                        this.keyIndices.put(tblIdx, c.getColumnIndex());
+                        this.keys.add(new Pair<Integer, MatchableTableColumn>(mc.getTableId(), mc));
                     }
                 }
                 tblIdx++;
-            } catch (Exception e) {
+            } catch (final Exception e) {
                 e.printStackTrace();
             }
 
@@ -204,59 +199,59 @@ public class WebTables implements Serializable {
             progress.report();
         }
 
-        System.out.println(String.format("%,d Web Tables Instances loaded.", records.size()));
-        System.out.println(String.format("%,d Web Tables Columns", schema.size()));
+        System.out.printf("%,d Web Tables Instances loaded.%n", this.records.size());
+        System.out.printf("%,d Web Tables Columns%n", this.schema.size());
     }
 
     public DataSet<MatchableTableRow, MatchableTableColumn> getRecords() {
-        return records;
+        return this.records;
     }
 
     public DataSet<MatchableTableColumn, MatchableTableColumn> getSchema() {
-        return schema;
+        return this.schema;
     }
 
     public DataSet<MatchableTable, MatchableTableColumn> getTables() {
-        return tables;
+        return this.tables;
     }
 
     public Processable<Pair<Integer, MatchableTableColumn>> getKeys() {
-        return keys;
+        return this.keys;
     }
 
     /**
      * @return A map (Column Identifier) -> (Column Header)
      */
     public HashMap<String, String> getColumnHeaders() {
-        return columnHeaders;
+        return this.columnHeaders;
     }
 
     /**
      * @return the tables
      */
     public HashMap<Integer, Table> getTablesById() {
-        return tablesById;
+        return this.tablesById;
     }
 
     /**
      * @return A map (Table Path) -> (Table Id)
      */
     public HashMap<String, Integer> getTableIndices() {
-        return tableIndices;
+        return this.tableIndices;
     }
 
     /**
      * @return A map (Table Id) -> (Table Path)
      */
     public Map<Integer, String> getTableNames() {
-        return tableNames;
+        return this.tableNames;
     }
 
     /**
      * @return A map (Table Id) -> (Table URL)
      */
     public Map<Integer, String> getTableURLs() {
-        return tableURLs;
+        return this.tableURLs;
     }
 
     /**
@@ -265,29 +260,29 @@ public class WebTables implements Serializable {
      * @return the keyIndices
      */
     public HashMap<Integer, Integer> getKeyIndices() {
-        return keyIndices;
+        return this.keyIndices;
     }
 
-    public void serialise(File location) {
-        try (final var output = new Output(new FileOutputStream(location))) {
+    public void serialise(final File location) {
+        try (var output = new Output(new FileOutputStream(location))) {
             System.out.println("Serialising Web Tables");
 
-            Kryo kryo = KryoFactory.createKryoInstance();
+            final Kryo kryo = KryoFactory.createKryoInstance();
             kryo.writeObject(output, this);
-        } catch (FileNotFoundException e) {
+        } catch (final FileNotFoundException e) {
             throw new RuntimeException(e);
         }
 
     }
 
-    public void printTableReport(Table t) {
-        System.out.println(String.format("%s: %d columns, %d rows", t.getPath(), t.getColumns().size(), t.getRows().size()));
-        for (TableColumn tc : t.getColumns()) {
-            System.out.println(String.format("\t[%d] %s (%s) %s", tc.getColumnIndex(), tc.getHeader(), tc.getDataType(), tc.getColumnIndex() == t.getSubjectColumnIndex() ? " *entity label column*" : ""));
+    public void printTableReport(final Table t) {
+        System.out.printf("%s: %d columns, %d rows%n", t.getPath(), t.getColumns().size(), t.getRows().size());
+        for (final TableColumn tc : t.getColumns()) {
+            System.out.printf("\t[%d] %s (%s) %s%n", tc.getColumnIndex(), tc.getHeader(), tc.getDataType(), tc.getColumnIndex() == t.getSubjectColumnIndex() ? " *entity label column*" : "");
         }
     }
 
-    public MatchableTableColumn findColumn(final int tableId, final int columnIndex2) {
-        return schema.where(input -> input.getTableId() == tableId && input.getColumnIndex() == columnIndex2).firstOrNull();
+    public MatchableTableColumn findColumn(int tableId, int columnIndex2) {
+        return this.schema.where(input -> input.getTableId() == tableId && input.getColumnIndex() == columnIndex2).firstOrNull();
     }
 }

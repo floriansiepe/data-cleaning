@@ -11,10 +11,7 @@ import florian.siepe.entity.kb.MatchableTableColumn;
 import florian.siepe.entity.kb.MatchableTableRow;
 
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class KnowledgeIndex implements Serializable {
     //class hierarchy mapping class -> super class
@@ -42,184 +39,159 @@ public class KnowledgeIndex implements Serializable {
 
     // rdfs:label
     private MatchableLodColumn rdfsLabel;
-    private HashMap<Integer, Double> classWeight = new HashMap<Integer, Double>();
+    private final HashMap<Integer, Double> classWeight = new HashMap<>();
     // lookup for tables by id
-    private HashMap<Integer, Integer> sizePerTable = new HashMap<Integer, Integer>();
+    private final HashMap<Integer, Integer> sizePerTable = new HashMap<>();
 
-    public static HashMap<String, String> getClassHierarchy() {
-        return classHierarchy;
+    public boolean hasProperty(final String uri) {
+        return this.propertyIds.containsKey(uri);
     }
 
-    public boolean hasProperty(String uri) {
-        return propertyIds.containsKey(uri);
+    public void addProperty(String uri, int globalId) {
+        this.properties.add(uri);
+        this.propertyIds.put(uri, globalId);
     }
 
-    public void addProperty(final String uri, final int globalId) {
-        properties.add(uri);
-        propertyIds.put(uri, globalId);
+    public Integer globalPropertyId(final String uri) {
+        return this.propertyIds.get(uri);
     }
 
-    public Integer globalPropertyId(String uri) {
-        return propertyIds.get(uri);
+    public void addClassProperty(int tableId, BiMap<Integer, Integer> indexTranslation) {
+        this.classProperties.put(tableId, indexTranslation);
     }
 
-    public void addClassProperty(final int tableId, final BiMap<Integer, Integer> indexTranslation) {
-        classProperties.put(tableId, indexTranslation);
-    }
-
-    public void addTable(final String className, final int tableId, final MatchableTable table) {
-        tableIds.put(className, tableId);
-        tables.add(table);
+    public void addTable(String className, int tableId, MatchableTable table) {
+        this.tableIds.put(className, tableId);
+        this.tables.add(table);
     }
 
     @Override
     public String toString() {
         return "KnowledgeIndex{" +
-                "classTableIds=" + tableIds +
-                ", propertyIds=" + propertyIds +
-                ", tableIdToTable=" + tableIdToTable +
-                ", classProperties=" + classProperties +
+                "classTableIds=" + this.tableIds +
+                ", propertyIds=" + this.propertyIds +
+                ", tableIdToTable=" + this.tableIdToTable +
+                ", classProperties=" + this.classProperties +
                 '}';
     }
 
-    public BiMap<String, Integer> getPropertyIds() {
-        return propertyIds;
-    }
-
-    public BiMap<Integer, Table> getTableIdToTable() {
-        return tableIdToTable;
-    }
-
-    public BiMap<Integer, BiMap<Integer, Integer>> getClassProperties() {
-        return classProperties;
-    }
 
     public BiMap<String, Integer> getTableIds() {
-        return tableIds;
+        return this.tableIds;
     }
 
-    public void addClassSimilarity(final String frist, final String second, final double similarity) {
-        final var firstId = tableIds.get(frist);
-        final var secondId = tableIds.get(second);
+    public void addClassSimilarity(String frist, String second, double similarity) {
+        var firstId = this.tableIds.get(frist);
+        var secondId = this.tableIds.get(second);
 
-        classSimilarities.computeIfAbsent(firstId, id -> {
-            final var map = new HashMap<Integer, Double>();
+        this.classSimilarities.computeIfAbsent(firstId, id -> {
+            var map = new HashMap<Integer, Double>();
             map.put(secondId, similarity);
             return map;
         });
 
-        classSimilarities.computeIfPresent(firstId, (id, map) -> {
+        this.classSimilarities.computeIfPresent(firstId, (id, map) -> {
             map.put(secondId, similarity);
             return map;
         });
 
-        classSimilarities.computeIfAbsent(secondId, id -> {
-            final var map = new HashMap<Integer, Double>();
+        this.classSimilarities.computeIfAbsent(secondId, id -> {
+            var map = new HashMap<Integer, Double>();
             map.put(firstId, similarity);
             return map;
         });
 
-        classSimilarities.computeIfPresent(secondId, (id, map) -> {
+        this.classSimilarities.computeIfPresent(secondId, (id, map) -> {
             map.put(firstId, similarity);
             return map;
         });
     }
 
-    public void addSchema(final MatchableLodColumn mc) {
-        schema.add(mc);
+    public void addSchema(MatchableLodColumn mc) {
+        this.schema.add(mc);
     }
 
-    public void addPropertyIndex(final int tblIdx, final BiMap<Integer, Integer> indexTranslation) {
-        propertyIndices.put(tblIdx, indexTranslation);
-        final var propertyIds = indexTranslation.keySet();
-        for (final Integer propertyId : propertyIds) {
-            final var columnIndex = indexTranslation.get(propertyId);
-            propertyClassIndices.putIfAbsent(propertyId, new HashMap<>());
-            propertyClassIndices.get(propertyId).putIfAbsent(tblIdx, columnIndex);
+    public void addPropertyIndex(int tblIdx, BiMap<Integer, Integer> indexTranslation) {
+        this.propertyIndices.put(tblIdx, indexTranslation);
+        var propertyIds = indexTranslation.keySet();
+        for (Integer propertyId : propertyIds) {
+            var columnIndex = indexTranslation.get(propertyId);
+            this.propertyClassIndices.putIfAbsent(propertyId, new HashMap<>());
+            this.propertyClassIndices.get(propertyId).putIfAbsent(tblIdx, columnIndex);
         }
     }
 
-    public MatchableTableRow getRecord(final String identifier) {
-        return records.getRecord(identifier);
+    public MatchableTableRow getRecord(String identifier) {
+        return this.records.getRecord(identifier);
     }
 
-    public String getClassIndex(final int tableId) {
-        return classIds.inverse().get(tableId);
+    public String getClassIndex(int tableId) {
+        return this.classIds.inverse().get(tableId);
     }
 
-    public void addClassIndex(final int tblIdx, final String className) {
-        classIds.put(className, tblIdx);
+    public void addClassIndex(int tblIdx, String className) {
+        this.classIds.put(className, tblIdx);
     }
 
-    public String getSuperclass(final String clazz) {
-        return classHierarchy.get(clazz);
+    public String getSuperclass(String clazz) {
+        return KnowledgeIndex.classHierarchy.get(clazz);
     }
 
-    public void addRecord(final MatchableTableRow mr) {
-        records.add(mr);
+    public void addRecord(MatchableTableRow mr) {
+        this.records.add(mr);
     }
 
     public Set<String> getClasses() {
-        return classIds.keySet();
+        return this.classIds.keySet();
     }
 
-    public boolean hasClass(final String clazz) {
-        return classIds.containsKey(clazz);
+    public boolean hasClass(String clazz) {
+        return this.classIds.containsKey(clazz);
     }
 
     public DataSet<MatchableTableRow, MatchableTableColumn> getRecords() {
-        return records;
+        return this.records;
     }
 
     public DataSet<MatchableTableColumn, MatchableTableColumn> getSchema() {
-        return schema;
-    }
-
-    public BiMap<String, Integer> getClassIds() {
-        return classIds;
+        return this.schema;
     }
 
     public LinkedList<String> getProperties() {
-        return properties;
-    }
-
-    public BiMap<Integer, BiMap<Integer, Integer>> getPropertyIndices() {
-        return propertyIndices;
-    }
-
-    public Map<Integer, Map<Integer, Double>> getClassSimilarities() {
-        return classSimilarities;
+        return this.properties;
     }
 
     public DataSet<MatchableTable, MatchableTableColumn> getTables() {
-        return tables;
+        return this.tables;
     }
 
-    public MatchableTableColumn findColumn(final int tableId, final int columnIndex1) {
-        return schema.where(input -> input.getColumnIndex() == columnIndex1 && input.getTableId() == tableId).firstOrNull();
+    public Collection<Object> findColumnValues(String identifier) {
+        Optional<MatchableTableColumn> column = this.findColumn(identifier).stream().findFirst();
+        if (column.isPresent()) {
+            MatchableTableColumn matchableTableColumn = column.get();
+
+            return this.records.where(input -> input.getPropertyUriToColumnIndex().containsKey(matchableTableColumn.getIdentifier())).map(rec -> rec.get(rec.getPropertyUriToColumnIndex().get(matchableTableColumn.getIdentifier()))).get();
+        }
+        return Collections.emptyList();
+    }
+
+    public Collection<MatchableTableColumn> findColumn(String identifier) {
+        return this.schema.where(input -> input.getIdentifier().equals(identifier)).get();
     }
 
     public MatchableLodColumn getRdfsLabel() {
-        return rdfsLabel;
+        return this.rdfsLabel;
     }
 
-    public BiMap<Integer, Map<Integer, Integer>> getPropertyClassIndices() {
-        return propertyClassIndices;
-    }
-
-    public void setRdfsLabel(final MatchableLodColumn rdfsLabel) {
+    public void setRdfsLabel(MatchableLodColumn rdfsLabel) {
         this.rdfsLabel = rdfsLabel;
     }
 
     public HashMap<Integer, Double> getClassWeight() {
-        return classWeight;
-    }
-
-    public void setClassWeight(final HashMap<Integer, Double> classWeight) {
-        this.classWeight = classWeight;
+        return this.classWeight;
     }
 
     public HashMap<Integer, Integer> getSizePerTable() {
-        return sizePerTable;
+        return this.sizePerTable;
     }
 }

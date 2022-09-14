@@ -9,43 +9,49 @@ import java.util.List;
 public class CamelCaseTokenizer implements Tokenizer {
     private final String input;
     private String[] tokens;
-    private int iteratorIndex = 0;
-    private TokenPreProcess tokenPreProcessor = null;
+    private int iteratorIndex;
+    private TokenPreProcess tokenPreProcessor;
 
-    public CamelCaseTokenizer(final String input) {
+    public CamelCaseTokenizer(String input) {
         this.input = input;
     }
 
     @Override
     public boolean hasMoreTokens() {
-        return this.tokens == null;
+        return null == this.tokens;
     }
 
     @Override
     public int countTokens() {
-        return tokens.length;
+        return this.tokens.length;
     }
 
     @Override
     public String nextToken() {
-        if (this.tokens == null) {
-            this.tokens = Arrays.stream(input.split("(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])"))
-                    .map(s -> tokenPreProcessor != null ? tokenPreProcessor.preProcess(s) : s)
+        if (null == this.tokens) {
+            tokens = Arrays.stream(this.input.split("(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])"))
+                    .map(s -> null != tokenPreProcessor ? this.tokenPreProcessor.preProcess(s) : s)
                     .toArray(String[]::new);
         }
-        return iteratorIndex >= tokens.length ? null : tokens[iteratorIndex++];
+        if (iteratorIndex >= tokens.length) {
+            return null;
+        } else {
+            String s = tokens[this.iteratorIndex];
+            this.iteratorIndex++;
+            return s;
+        }
     }
 
     @Override
     public List<String> getTokens() {
-        if (this.tokens == null) {
-            this.nextToken();
+        if (null == this.tokens) {
+            nextToken();
         }
-        return List.of(tokens);
+        return List.of(this.tokens);
     }
 
     @Override
-    public void setTokenPreProcessor(final TokenPreProcess tokenPreProcess) {
-        this.tokenPreProcessor = tokenPreProcess;
+    public void setTokenPreProcessor(TokenPreProcess tokenPreProcess) {
+        tokenPreProcessor = tokenPreProcess;
     }
 }
